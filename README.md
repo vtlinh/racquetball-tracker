@@ -54,6 +54,8 @@ No build step: static HTML, CSS and ES modules.
 npm test         # lineup rules + sheet sync (runs apps-script/Code.gs against an in-memory sheet)
 npm run serve    # http://localhost:8080
 npm run icons    # regenerate PNG icons
+node tests/mock-api-server.mjs   # local stand-in for the Apps Script API on :8081
+                                 # then open http://localhost:8080/?api=http://localhost:8081/exec
 ```
 
 Pushing to `main` runs the tests and publishes the site to the `gh-pages` branch (GitHub Pages).
