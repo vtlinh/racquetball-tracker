@@ -76,9 +76,9 @@ main { max-width: 560px; margin: 0 auto; padding: 8px 10px 24px; display: grid; 
 }
 .chip:active { transform: scale(0.96); }
 .chip.on { background: hsl(var(--h) 60% 42%); border-color: transparent; color: #fff; }
-.chip.off { opacity: 0.55; border-style: dashed; }
-.chip small { font-weight: 500; opacity: 0.85; font-size: 11px; }
-.chip.add { border: 1.5px dashed var(--muted); color: var(--muted); padding: 4px 8px; }
+.chip.off { border: 1.5px dashed var(--muted); color: var(--muted); opacity: 0.6; font-weight: 500; }
+.players .chip { padding: 4px 10px; }
+.chip.add { border: 1.5px dashed var(--muted); color: var(--muted); padding: 4px 7px; }
 .chip.add .ic { width: 16px; height: 16px; }
 .chip.sit { background: hsl(var(--h) 25% 50% / 0.18); border-color: hsl(var(--h) 40% 50% / 0.6); }
 .chip.sel { outline: 3px solid var(--accent-2); outline-offset: 2px; }
