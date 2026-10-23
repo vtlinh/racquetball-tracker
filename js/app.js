@@ -14,10 +14,21 @@ let selected = null;
 let statsScope = 'today';
 let statsOffset = 0;
 
+const PALETTE = [210, 12, 140, 275, 38, 185, 330, 95];
+
 function hue(name) {
+  const i = S.getState().roster.indexOf(name);
+  if (i >= 0) return PALETTE[i % PALETTE.length];
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
   return h;
+}
+
+/** Only touch the DOM when markup changed, so a background re-render can't swallow a tap mid-press. */
+function put(el, html) {
+  if (el._html === html) return;
+  el._html = html;
+  el.innerHTML = html;
 }
 
 const chip = (name, { cls = '', attrs = '', extra = '' } = {}) =>
@@ -28,7 +39,7 @@ const chip = (name, { cls = '', attrs = '', extra = '' } = {}) =>
 function render() {
   const { session, roster } = S.getState();
   const st = L.playerStats(session.history, roster);
-  renderPlayers(session, roster, st);
+  renderPlayers(session, roster);
   renderCourt(session);
   renderTools(session);
   renderToday(session, st);
@@ -38,20 +49,20 @@ function render() {
   if ($('#settingsDlg').open) renderSettings();
 }
 
-function renderPlayers(session, roster, st) {
+function renderPlayers(session, roster) {
   const extras = session.present.filter((p) => !roster.includes(p));
-  $('#players').innerHTML =
+  put(
+    $('#players'),
     [...roster, ...extras]
       .map((p) => {
         const on = session.present.includes(p);
-        const r = st[p] || { played: 0, wins: 0 };
         return chip(p, {
           cls: on ? 'on' : 'off',
           attrs: `data-act="toggle" aria-pressed="${on}" title="${on ? 'Here — tap if leaving' : 'Tap to check in'}"`,
-          extra: r.played ? `<small>${r.wins}/${r.played}</small>` : '',
         });
       })
-      .join('') + `<button class="chip add" data-act="addGuest" title="Add player">${icon('plus')}</button>`;
+      .join('') + `<button class="chip add" data-act="addGuest" title="Add player">${icon('plus')}</button>`,
+  );
 }
 
 function renderCourt(session) {
@@ -59,7 +70,7 @@ function renderCourt(session) {
   const el = $('#court');
   if (!m) {
     const n = session.present.length;
-    el.innerHTML = `<p class="empty">${n ? 'Need at least 2 players' : 'Tap players who are here (2–5)'}</p>`;
+    put(el, `<p class="empty">${n ? 'Need at least 2 players' : 'Tap players who are here (2–5)'}</p>`);
     return;
   }
   const mode = L.modeOf(m.sides);
@@ -81,7 +92,9 @@ function renderCourt(session) {
   const canBench = selected && L.onCourt(m).includes(selected) && L.onCourt(m).length > 2;
   const canUnbench = selected && m.out.includes(selected) && L.onCourt(m).length < L.MAX_ON_COURT;
 
-  el.innerHTML = `
+  put(
+    el,
+    `
     <div class="court-head">
       <span class="tag">${label}</span>
       <span class="tag muted">Match ${session.history.length + 1}</span>
@@ -93,7 +106,8 @@ function renderCourt(session) {
       ${icon('bench')}
       ${m.out.map((p) => chip(p, { cls: `sit ${sel(p)}`, attrs: 'data-act="pick"' })).join('')}
       ${canBench ? '<span class="hint">tap to sit out</span>' : m.out.length ? '' : '<span class="hint">no one sitting</span>'}
-    </div>`;
+    </div>`,
+  );
 }
 
 function renderTools(session) {
@@ -133,12 +147,12 @@ function renderToday(session, st) {
     return;
   }
   el.hidden = false;
-  el.innerHTML = statsTable(todayRows(session, st));
+  put(el, statsTable(todayRows(session, st)));
 }
 
 function renderLog(session) {
   const h = session.history;
-  $('#log').innerHTML = h
+  const items = h
     .map((m, i) => {
       const sides = m.sides.map(
         (t, j) => `<span class="${j === m.win ? 'w' : 'l'}">${esc(t.join('+'))}</span>`,
@@ -150,7 +164,7 @@ function renderLog(session) {
     })
     .reverse()
     .join('');
-  $('#log').innerHTML = h.length ? `<ol>${$('#log').innerHTML}</ol>` : '';
+  put($('#log'), h.length ? `<ol>${items}</ol>` : '');
 }
 
 function renderSync() {
@@ -164,7 +178,7 @@ function renderSync() {
   };
   const [ic, title] = status === 'idle' && pending ? ['sync', 'Waiting to sync'] : map[status];
   const btn = $('#syncBtn');
-  btn.innerHTML = icon(ic, status === 'syncing' ? 'spin' : '');
+  put(btn, icon(ic, status === 'syncing' ? 'spin' : ''));
   btn.title = title;
   btn.className = `icon-btn sync-${status}`;
 }
