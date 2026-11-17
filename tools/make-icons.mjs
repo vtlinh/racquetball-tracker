@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-const BG = hex('#0f766e');
+const BG = hex('#31575a');
 const SW = 11; // half stroke width in 512-space
 
 function ellipseDist(x, y, cx, cy, rx, ry, deg) {
@@ -27,9 +27,9 @@ function segDist(x, y, x1, y1, x2, y2) {
 const shapes = [
   { c: hex('#ffffff'), hit: (x, y) => ellipseDist(x, y, 200, 200, 92, 110, -35) < SW },
   { c: hex('#ffffff'), hit: (x, y) => segDist(x, y, 262, 290, 330, 380) < SW },
-  { c: hex('#99f6e4'), hit: (x, y) => ellipseDist(x, y, 312, 200, 92, 110, 35) < SW },
-  { c: hex('#99f6e4'), hit: (x, y) => segDist(x, y, 250, 290, 182, 380) < SW },
-  { c: hex('#fde047'), hit: (x, y) => Math.hypot(x - 256, y - 410) < 30 },
+  { c: hex('#c6d8dc'), hit: (x, y) => ellipseDist(x, y, 312, 200, 92, 110, 35) < SW },
+  { c: hex('#c6d8dc'), hit: (x, y) => segDist(x, y, 250, 290, 182, 380) < SW },
+  { c: hex('#e6b64a'), hit: (x, y) => Math.hypot(x - 256, y - 410) < 30 },
 ];
 
 function render(size) {

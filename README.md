@@ -7,25 +7,29 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 ## How lineups are picked
 
-- Tap players to check in or out (default roster: Rick, Leo, Linh, Nate, Doug). Anyone can join or leave mid-day, and the teams are reshuffled when they do.
+- Tap the circle-check on a player's row to check them in or out (default roster: Rick, Leo, Linh, Nate, Doug). Anyone can join or leave mid-day, and the teams are reshuffled when they do.
 - **5 players:** 2v2 with one sitting out. At the start the sitter is random. After a result, the sitter comes from the losing team: whoever has played the most today (ties are broken randomly). The previous sitter always comes back in.
 - **4 players:** 2v2, nobody sits out.
 - **3 players:** cut-throat (one winner). **2 players:** 1v1.
 - **The winning pair is never teamed together in the next match.** Among the remaining options, the split with the fewest repeat teammates today is picked, so pairings spread out.
-- **Manual overrides:** tap a player, then tap another player to swap them (works between teams and the bench). Tap the bench to sit a player out, for example to sit one of 4 players out for a cut-throat game. Use "to court" to bring someone back. An override applies to that match only.
+- **Manual overrides:** tap a name, then tap another name to swap them (works between teams and the "Out" player). The coffee cup on a player's row sits them out: with someone already out they trade places, and with nobody out (4 players) the game becomes cut-throat. Tap the cup again to bring them back. An override applies to that match only.
 - The shuffle button re-splits the current players into a different legal pairing.
 
 ## Buttons
 
 | Icon | Action |
 | --- | --- |
-| Trophy (on each team) | That team or player won. The next lineup is picked automatically. |
+| Win (on each team) | That team or player won. The next lineup is picked automatically. |
 | Undo | Reverts the last action, whether a result, a check-in, an edit, Reset or Done. You can undo all the way back to an empty session. |
 | Shuffle | Re-split the teams. |
-| Check | **Done**: stamps today's per-player stats into the sheet (`Days` and `Matches` tabs). |
 | Reset | Start over with the same players checked in. |
-| Chart | Stats: Today (live), Month, Year. |
-| Sliders | Settings: roster and the Google Sheet connection. |
+| Check | **Done**: stamps today's per-player stats into the sheet (`Days` and `Matches` tabs). |
+| Coffee cup (player row) | Sit that player out (or bring them back). |
+| Circle-check (player row) | Check the player in or out. |
+| Month / Year, arrows | Stamped stats for a month or year. Trash deletes the stamped days in the shown period. |
+| "Saved in this browser." | Tap it for settings: roster and the Google Sheet connection. |
+
+Today's live counts (played, won, sat) are on each player's row; past matches are under "Recent results".
 
 ## Google Sheet storage
 
@@ -59,3 +63,5 @@ node tests/mock-api-server.mjs   # local stand-in for the Apps Script API on :80
 ```
 
 Pushing to `main` runs the tests and publishes the site to the `gh-pages` branch (GitHub Pages).
+
+GitHub Pages has to be switched on once by a repo admin: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, then pick **`gh-pages`** and **`/ (root)`** and save. The app is then live at https://vtlinh.github.io/racquetball-tracker/ and updates on every push to `main`.

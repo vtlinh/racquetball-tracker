@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="theme-color" content="#131b1e" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -15,69 +15,77 @@
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
-    <header class="bar">
-      <h1><span class="logo">2v2</span> Lineup</h1>
-      <div class="bar-actions">
-        <button class="icon-btn" id="syncBtn" title="Sync"></button>
-        <button class="icon-btn" id="statsBtn" title="Stats" data-icon="chart"></button>
-        <button class="icon-btn" id="settingsBtn" title="Settings" data-icon="settings"></button>
-      </div>
-    </header>
-
     <main>
-      <section id="players" class="players" aria-label="Who is here"></section>
-      <section id="court" class="court"></section>
-      <nav class="tools" aria-label="Actions">
-        <button class="tool" id="undoBtn" title="Undo last action" data-icon="undo"><span class="badge" id="undoCount"></span></button>
-        <button class="tool" id="shuffleBtn" title="Reshuffle teams" data-icon="shuffle"></button>
-        <button class="tool done" id="doneBtn" title="Done — stamp today's stats" data-icon="done"></button>
-        <button class="tool" id="resetBtn" title="Reset — start again" data-icon="reset"></button>
-      </nav>
-      <section id="today" class="card"></section>
-      <section id="log" class="log"></section>
+      <header class="top">
+        <h1>2v2 lineup</h1>
+        <nav class="actions" aria-label="Actions">
+          <button class="btn" id="undoBtn" title="Undo last action" data-icon="undo"></button>
+          <button class="btn" id="shuffleBtn" title="Reshuffle teams" data-icon="shuffle"></button>
+          <button class="btn" id="resetBtn" title="Reset — start again" data-icon="reset"></button>
+          <button class="btn primary" id="doneBtn" title="Done — stamp today's stats" data-icon="check"></button>
+        </nav>
+      </header>
+      <button class="saved" id="syncLine" title="Settings: players and Google Sheet"></button>
+
+      <section id="court" class="match"></section>
+      <div id="outRow" class="out-row"></div>
+
+      <section class="players" aria-label="Today">
+        <div class="players-head"><span></span><span>Played</span><span>Won</span><span>Sat</span><span></span><span></span></div>
+        <div id="players"></div>
+      </section>
+
+      <details class="fold" id="recent">
+        <summary>Recent results</summary>
+        <div id="log" class="log"></div>
+      </details>
+
+      <section class="stats-sec" aria-label="Stats">
+        <div class="stats-bar">
+          <div class="seg" id="statsSeg">
+            <button class="btn text" data-scope="month">Month</button>
+            <button class="btn text" data-scope="year">Year</button>
+          </div>
+          <div class="period">
+            <button class="btn" id="prevPeriod" title="Previous" data-icon="left"></button>
+            <span id="periodLabel"></span>
+            <button class="btn" id="nextPeriod" title="Next" data-icon="right"></button>
+          </div>
+          <button class="btn" id="clearPeriod" title="Delete stamped days in this period" data-icon="trash"></button>
+        </div>
+        <div id="statsBody"></div>
+        <p class="note" id="statsNote"></p>
+        <details class="fold" id="daysFold">
+          <summary>Days</summary>
+          <div id="daysList"></div>
+        </details>
+      </section>
     </main>
 
     <div id="toast" class="toast" role="status" hidden></div>
 
-    <dialog id="statsDlg" class="sheet">
-      <header class="sheet-head">
-        <div class="seg" id="statsSeg">
-          <button data-scope="today">Today</button>
-          <button data-scope="month">Month</button>
-          <button data-scope="year">Year</button>
-        </div>
-        <button class="icon-btn" data-close title="Close" data-icon="x"></button>
-      </header>
-      <div class="period" id="statsPeriod">
-        <button class="icon-btn sm" id="prevPeriod" title="Previous" data-icon="left"></button>
-        <span id="periodLabel"></span>
-        <button class="icon-btn sm" id="nextPeriod" title="Next" data-icon="right"></button>
-      </div>
-      <div id="statsBody"></div>
-    </dialog>
-
     <dialog id="settingsDlg" class="sheet">
       <header class="sheet-head">
         <strong>Settings</strong>
-        <button class="icon-btn" data-close title="Close" data-icon="x"></button>
+        <button class="btn" data-close title="Close" data-icon="x"></button>
       </header>
       <h3>Players</h3>
       <div id="rosterList" class="roster"></div>
       <form id="addPlayerForm" class="row">
         <input id="newPlayer" placeholder="Add player" autocomplete="off" maxlength="20" />
-        <button class="icon-btn" title="Add" data-icon="plus"></button>
+        <button class="btn" title="Add" data-icon="plus"></button>
       </form>
 
       <h3>Google Sheet</h3>
       <p class="muted small" id="syncInfo"></p>
       <form id="apiForm" class="row">
         <input id="apiUrl" placeholder="Apps Script web app URL (…/exec)" autocomplete="off" />
-        <button class="icon-btn" title="Save" data-icon="check"></button>
+        <button class="btn" title="Save" data-icon="check"></button>
       </form>
-      <div class="row gap">
-        <a class="icon-btn" id="sheetLink" target="_blank" rel="noopener" title="Open sheet" data-icon="sheet"></a>
-        <button class="icon-btn" id="copyScript" title="Copy Apps Script code" data-icon="copy"></button>
-        <button class="icon-btn" id="syncNow" title="Sync now" data-icon="sync"></button>
+      <div class="row">
+        <a class="btn" id="sheetLink" target="_blank" rel="noopener" title="Open sheet" data-icon="sheet"></a>
+        <button class="btn" id="copyScript" title="Copy Apps Script code" data-icon="copy"></button>
+        <button class="btn" id="syncNow" title="Sync now" data-icon="sync"></button>
       </div>
       <details class="small">
         <summary>Connect the sheet (one time)</summary>

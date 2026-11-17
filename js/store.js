@@ -135,6 +135,20 @@ export function undo() {
   commit(next);
 }
 
+/** Remove stamped days for the given sessions, locally and in the sheet. */
+export function deleteStamped(sessions) {
+  const ids = new Set(sessions);
+  if (!ids.size) return;
+  let pending = [...state.pending];
+  for (const id of ids) {
+    const queued = pending.some((p) => p.action === 'stamp' && p.session === id && p !== inflight);
+    pending = queued
+      ? pending.filter((p) => p.session !== id)
+      : [...pending, { action: 'unstamp', session: id }];
+  }
+  commit({ days: state.days.filter((d) => !ids.has(d.session)), pending }, { remoteState: false });
+}
+
 export function setRoster(roster) {
   const clean = [...new Set(roster.map((n) => n.trim()).filter(Boolean))];
   commit(

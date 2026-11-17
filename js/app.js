@@ -9,20 +9,11 @@ const esc = (s) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   );
+const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' });
 
 let selected = null;
-let statsScope = 'today';
+let statsScope = 'month';
 let statsOffset = 0;
-
-const PALETTE = [210, 12, 140, 275, 38, 185, 330, 95];
-
-function hue(name) {
-  const i = S.getState().roster.indexOf(name);
-  if (i >= 0) return PALETTE[i % PALETTE.length];
-  let h = 0;
-  for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
-  return h;
-}
 
 /** Only touch the DOM when markup changed, so a background re-render can't swallow a tap mid-press. */
 function put(el, html) {
@@ -31,38 +22,45 @@ function put(el, html) {
   el.innerHTML = html;
 }
 
-const chip = (name, { cls = '', attrs = '', extra = '' } = {}) =>
-  `<button class="chip ${cls}" style="--h:${hue(name)}" data-name="${esc(name)}" ${attrs}>${esc(name)}${extra}</button>`;
+const nameBtn = (name, cls = '') =>
+  `<button class="name ${cls} ${name === selected ? 'sel' : ''}" data-act="pick" data-name="${esc(name)}">${esc(name)}</button>`;
 
 // ---- render ----------------------------------------------------------------
 
 function render() {
-  const { session, roster } = S.getState();
-  const st = L.playerStats(session.history, roster);
-  renderPlayers(session, roster);
-  renderCourt(session);
+  const { session } = S.getState();
   renderTools(session);
-  renderToday(session, st);
-  renderLog(session);
   renderSync();
-  if ($('#statsDlg').open) renderStats();
+  renderCourt(session);
+  renderOut(session);
+  renderPlayers(session);
+  renderLog(session);
+  renderStats();
   if ($('#settingsDlg').open) renderSettings();
 }
 
-function renderPlayers(session, roster) {
-  const extras = session.present.filter((p) => !roster.includes(p));
-  put(
-    $('#players'),
-    [...roster, ...extras]
-      .map((p) => {
-        const on = session.present.includes(p);
-        return chip(p, {
-          cls: on ? 'on' : 'off',
-          attrs: `data-act="toggle" aria-pressed="${on}" title="${on ? 'Here — tap if leaving' : 'Tap to check in'}"`,
-        });
-      })
-      .join('') + `<button class="chip add" data-act="addGuest" title="Add player">${icon('plus')}</button>`,
-  );
+function renderTools(session) {
+  $('#undoBtn').disabled = !S.canUndo();
+  $('#shuffleBtn').disabled = !session.match || L.onCourt(session.match).length !== 4;
+  $('#doneBtn').disabled = !session.history.length;
+  $('#resetBtn').disabled = !session.history.length && !session.present.length;
+}
+
+function renderSync() {
+  const { status } = S.getSync();
+  const { pending, dirty } = S.getState();
+  const waiting = pending.length || dirty;
+  const text = {
+    local: 'Saved in this browser.',
+    idle: waiting
+      ? 'Saved in this browser. Waiting to sync…'
+      : 'Saved in this browser and synced to the sheet.',
+    syncing: 'Saved in this browser. Syncing…',
+    error: 'Saved in this browser. Sheet sync failed, retrying.',
+  }[status];
+  const el = $('#syncLine');
+  el.textContent = text;
+  el.classList.toggle('err', status === 'error');
 }
 
 function renderCourt(session) {
@@ -70,177 +68,163 @@ function renderCourt(session) {
   const el = $('#court');
   if (!m) {
     const n = session.present.length;
-    put(el, `<p class="empty">${n ? 'Need at least 2 players' : 'Tap players who are here (2–5)'}</p>`);
+    put(el, `<p class="empty">${n ? 'Need at least 2 players' : 'Check in who’s here below'}</p>`);
     return;
   }
-  const mode = L.modeOf(m.sides);
+  const letters = 'ABC';
+  const teams = m.sides.map(
+    (team, i) => `
+      <div class="team">
+        <div class="team-label">Team ${letters[i]}</div>
+        <div class="team-names">${team.map((p) => nameBtn(p)).join('')}</div>
+        <button class="win" data-act="win" data-side="${i}" title="${esc(team.join(' + '))} won">${icon('trophy')}Win</button>
+      </div>`,
+  );
+  put(el, `<div class="teams">${teams.join('<div class="vs"><span>vs</span></div>')}</div>`);
+}
+
+function renderOut(session) {
+  const m = session.match;
+  const el = $('#outRow');
+  if (!m) {
+    put(el, '');
+    return;
+  }
   const blocked = L.blockedPair(session.history);
   const clash = blocked && m.sides.some((t) => t.length === 2 && blocked.every((p) => t.includes(p)));
-  const label = { '2v2': '2 v 2', '1v1': '1 v 1', '3way': 'Cut-throat' }[mode];
-  const sel = (p) => (p === selected ? 'sel' : '');
-
-  const sides = m.sides
-    .map(
-      (team, i) => `
-      <div class="side">
-        <div class="side-players">${team.map((p) => chip(p, { cls: `on ${sel(p)}`, attrs: 'data-act="pick"' })).join('')}</div>
-        <button class="win-btn" data-act="win" data-side="${i}" title="${esc(team.join(' + '))} won">${icon('trophy')}</button>
-      </div>`,
-    )
-    .join(`<span class="vs">vs</span>`);
-
-  const canBench = selected && L.onCourt(m).includes(selected) && L.onCourt(m).length > 2;
-  const canUnbench = selected && m.out.includes(selected) && L.onCourt(m).length < L.MAX_ON_COURT;
-
+  const hint = selected
+    ? 'tap another name'
+    : clash
+      ? `<span class="warn">last winners together</span>`
+      : 'tap names to swap';
   put(
     el,
-    `
-    <div class="court-head">
-      <span class="tag">${label}</span>
-      <span class="tag muted">Match ${session.history.length + 1}</span>
-      ${clash ? `<span class="tag warn" title="Last winners are teamed up">${icon('warn')}winners together</span>` : ''}
-      ${canUnbench ? `<button class="tag action" data-act="unbench">${icon('up')}to court</button>` : ''}
-    </div>
-    <div class="sides n${m.sides.length}">${sides}</div>
-    <div class="bench ${canBench ? 'target' : ''}" data-act="bench" title="Sitting out">
-      ${icon('bench')}
-      ${m.out.map((p) => chip(p, { cls: `sit ${sel(p)}`, attrs: 'data-act="pick"' })).join('')}
-      ${canBench ? '<span class="hint">tap to sit out</span>' : m.out.length ? '' : '<span class="hint">no one sitting</span>'}
-    </div>`,
+    `<span class="out-label">Out</span>
+     ${m.out.length ? m.out.map((p) => nameBtn(p, 'pill')).join('') : '<span class="muted">nobody</span>'}
+     <span class="hint">${hint}</span>`,
   );
 }
 
-function renderTools(session) {
-  const n = S.getState().undo.length;
-  $('#undoBtn').disabled = !n;
-  $('#undoCount').textContent = n || '';
-  $('#shuffleBtn').disabled = !session.match || L.onCourt(session.match).length !== 4;
-  $('#doneBtn').disabled = !session.history.length;
-  $('#resetBtn').disabled = !session.history.length && !session.present.length;
-}
-
-function statsTable(rows, { days = false } = {}) {
-  if (!rows.length) return '<p class="empty">No games yet</p>';
-  return `<table class="stats">
-    <thead><tr><th></th>${days ? '<th title="Days">D</th>' : ''}<th title="Played">P</th><th title="Wins">W</th><th title="Losses">L</th><th title="Sat out">Out</th><th>Win%</th></tr></thead>
-    <tbody>${rows
-      .map(
-        (r) =>
-          `<tr><td><span class="dot" style="--h:${hue(r.player)}"></span>${esc(r.player)}</td>${
-            days ? `<td>${r.days}</td>` : ''
-          }<td>${r.played}</td><td>${r.wins}</td><td>${r.losses}</td><td>${r.out}</td><td>${
-            r.played ? Math.round(L.winPct(r) * 100) : '–'
-          }</td></tr>`,
-      )
-      .join('')}</tbody></table>`;
-}
-
-function todayRows(session, st) {
-  const names = [...new Set([...session.seen, ...session.present])];
-  return names.map((p) => ({ player: p, ...(st[p] || { played: 0, wins: 0, losses: 0, out: 0 }) }));
-}
-
-function renderToday(session, st) {
-  const el = $('#today');
-  if (!session.history.length) {
-    el.hidden = true;
-    return;
-  }
-  el.hidden = false;
-  put(el, statsTable(todayRows(session, st)));
+function renderPlayers(session) {
+  const { roster } = S.getState();
+  const names = [...new Set([...roster, ...session.present, ...session.seen])].sort(byName);
+  const st = L.playerStats(session.history, names);
+  const m = session.match;
+  put(
+    $('#players'),
+    names
+      .map((p) => {
+        const here = session.present.includes(p);
+        const out = !!m?.out.includes(p);
+        const r = st[p];
+        return `<div class="prow ${here ? '' : 'away'}">
+          <span class="pname">${esc(p)}</span>
+          <span>${r.played}</span><span>${r.wins}</span><span>${r.out}</span>
+          <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" ${here ? '' : 'disabled'}
+            title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
+          <button class="btn here ${here ? 'on' : ''}" data-act="toggle" data-name="${esc(p)}" aria-pressed="${here}"
+            title="${here ? 'Here — tap if leaving' : 'Tap to check in'}">${icon(here ? 'here' : 'away')}</button>
+        </div>`;
+      })
+      .join(''),
+  );
 }
 
 function renderLog(session) {
   const h = session.history;
   const items = h
     .map((m, i) => {
-      const sides = m.sides.map(
-        (t, j) => `<span class="${j === m.win ? 'w' : 'l'}">${esc(t.join('+'))}</span>`,
-      );
-      const out = m.out?.length
-        ? `<span class="muted"> · ${icon('bench')}${esc(m.out.join(', '))}</span>`
-        : '';
-      return `<li><b>${i + 1}</b>${sides.join('<i>v</i>')}${out}</li>`;
+      const win = m.sides[m.win].join(' & ');
+      const lose = m.sides
+        .filter((_, j) => j !== m.win)
+        .map((t) => t.join(' & '))
+        .join(', ');
+      const out = m.out?.length ? `<span class="muted"> · ${esc(m.out.join(', '))} sat</span>` : '';
+      return `<li><b>${i + 1}</b><span><span class="w">${esc(win)}</span> beat ${esc(lose)}${out}</span></li>`;
     })
     .reverse()
     .join('');
-  put($('#log'), h.length ? `<ol>${items}</ol>` : '');
+  put($('#log'), h.length ? `<ol>${items}</ol>` : '<p class="muted small">No results yet today.</p>');
 }
 
-function renderSync() {
-  const { status, error } = S.getSync();
-  const pending = S.getState().pending.length + (S.getState().dirty ? 1 : 0);
-  const map = {
-    local: ['phone', 'Saved on this device only — connect the Google Sheet in settings'],
-    idle: ['cloud', 'Synced with Google Sheet'],
-    syncing: ['sync', 'Syncing…'],
-    error: ['cloudOff', `Sync failed (${error}) — will retry`],
-  };
-  const [ic, title] = status === 'idle' && pending ? ['sync', 'Waiting to sync'] : map[status];
-  const btn = $('#syncBtn');
-  put(btn, icon(ic, status === 'syncing' ? 'spin' : ''));
-  btn.title = title;
-  btn.className = `icon-btn sync-${status}`;
-}
+// ---- stats -------------------------------------------------------------------
 
-// ---- stats dialog ------------------------------------------------------------
-
-function periodPrefix() {
+function period() {
   const d = new Date();
   if (statsScope === 'month') {
     d.setDate(1);
     d.setMonth(d.getMonth() + statsOffset);
     return {
       prefix: L.localDate(d).slice(0, 7),
-      label: d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+      label: d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
     };
   }
   const y = String(d.getFullYear() + statsOffset);
   return { prefix: y, label: y };
 }
 
+/** Days rows don't carry a match count; whoever was there all session played or sat every match. */
+function matchCount(rows) {
+  const most = {};
+  for (const r of rows) most[r.session] = Math.max(most[r.session] || 0, (+r.played || 0) + (+r.out || 0));
+  return Object.values(most).reduce((a, b) => a + b, 0);
+}
+
+const matchesText = (n) => `${n} match${n === 1 ? '' : 'es'}`;
+
+function periodRows() {
+  const { prefix } = period();
+  return S.getState().days.filter((d) => String(d.date).startsWith(prefix));
+}
+
 function renderStats() {
-  const { session, days } = S.getState();
   document
     .querySelectorAll('#statsSeg button')
     .forEach((b) => b.classList.toggle('on', b.dataset.scope === statsScope));
-  const period = $('#statsPeriod');
-  if (statsScope === 'today') {
-    period.hidden = true;
-    const st = L.playerStats(session.history, session.seen);
-    $('#statsBody').innerHTML =
-      `<p class="muted small">${esc(session.date)} · ${session.history.length} matches (live, not stamped yet)</p>` +
-      statsTable(todayRows(session, st)) +
-      pairTable(session.history);
-    return;
-  }
-  period.hidden = false;
-  const { prefix, label } = periodPrefix();
-  $('#periodLabel').textContent = label;
-  const rows = days.filter((d) => String(d.date).startsWith(prefix));
-  const dates = [...new Set(rows.map((r) => r.date))].sort().reverse();
-  $('#statsBody').innerHTML =
-    `<p class="muted small">${dates.length} day${dates.length === 1 ? '' : 's'} stamped</p>` +
-    statsTable(L.aggregate(rows), { days: true }) +
-    (statsScope === 'month' && dates.length
-      ? `<h4>Days</h4><ul class="days">${dates
-          .map((dt) => {
-            const line = L.aggregate(rows.filter((r) => r.date === dt))
-              .map((r) => `${esc(r.player)} ${r.wins}-${r.losses}`)
-              .join(' · ');
-            return `<li><b>${esc(dt.slice(5))}</b> ${line}</li>`;
-          })
-          .join('')}</ul>`
-      : '');
-}
+  $('#periodLabel').textContent = period().label;
+  const rows = periodRows();
+  $('#clearPeriod').disabled = !rows.length;
 
-function pairTable(history) {
-  const { pc } = L.pairCounts(history);
-  const entries = Object.entries(pc).sort((a, b) => b[1] - a[1]);
-  if (!entries.length) return '';
-  return `<h4>Teammates today</h4><p class="small pairs">${entries
-    .map(([k, n]) => `<span>${esc(k.replace('|', '+'))} <b>${n}</b></span>`)
-    .join('')}</p>`;
+  const agg = L.aggregate(rows).sort((a, b) => byName(a.player, b.player));
+  put(
+    $('#statsBody'),
+    agg.length
+      ? `<table class="stats">
+          <thead><tr><th>Player</th><th>Played</th><th>Won</th><th>Win %</th><th>Sat</th></tr></thead>
+          <tbody>${agg
+            .map(
+              (r) =>
+                `<tr><td>${esc(r.player)}</td><td>${r.played}</td><td>${r.wins}</td><td>${
+                  r.played ? `${Math.round(L.winPct(r) * 100)}%` : '–'
+                }</td><td>${r.out}</td></tr>`,
+            )
+            .join('')}</tbody></table>`
+      : '<p class="stats empty">No stamped days</p>',
+  );
+
+  const dates = [...new Set(rows.map((r) => r.date))].sort().reverse();
+  $('#statsNote').textContent = rows.length
+    ? `${dates.length} day${dates.length === 1 ? '' : 's'} stamped, ${matchesText(matchCount(rows))}`
+    : '';
+  $('#daysFold').hidden = !rows.length;
+  put(
+    $('#daysList'),
+    `<ul class="days">${dates
+      .map((dt) => {
+        const dayRows = rows.filter((r) => r.date === dt);
+        const line = L.aggregate(dayRows)
+          .sort((a, b) => byName(a.player, b.player))
+          .map((r) => `${esc(r.player)} ${r.wins}-${r.losses}`)
+          .join(' · ');
+        const label = new Date(`${dt}T12:00`).toLocaleDateString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        });
+        return `<li><b>${esc(label)}</b><span class="muted">${matchesText(matchCount(dayRows))}</span><span>${line}</span></li>`;
+      })
+      .join('')}</ul>`,
+  );
 }
 
 // ---- settings dialog ----------------------------------------------------------
@@ -250,14 +234,14 @@ function renderSettings() {
   $('#rosterList').innerHTML = roster
     .map(
       (p) =>
-        `<span class="chip on" style="--h:${hue(p)}">${esc(p)}<button class="x" data-remove="${esc(p)}" title="Remove ${esc(p)}">${icon('x')}</button></span>`,
+        `<span class="pill">${esc(p)}<button class="x" data-remove="${esc(p)}" title="Remove ${esc(p)}">${icon('x')}</button></span>`,
     )
     .join('');
   const url = S.getApiUrl();
   if (document.activeElement !== $('#apiUrl')) $('#apiUrl').value = url;
   const { status, error } = S.getSync();
   $('#syncInfo').textContent = !url
-    ? 'Not connected: data is kept on this device until the sheet is connected.'
+    ? 'Not connected: data is kept in this browser until the sheet is connected.'
     : status === 'error'
       ? `Connected, last sync failed: ${error}`
       : 'Connected: live session, days and roster are stored in the sheet.';
@@ -284,6 +268,15 @@ function onPick(name) {
   render();
 }
 
+function onSit(name) {
+  const { session } = S.getState();
+  const m = session.match;
+  if (!m) return;
+  if (m.out.includes(name)) S.unbench(name);
+  else if (m.out.length) S.swap(name, m.out[0]);
+  else S.bench(name);
+}
+
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-act]');
   const act = t?.dataset.act;
@@ -300,36 +293,19 @@ document.addEventListener('click', (e) => {
       selected = null;
       S.togglePlayer(name);
       break;
-    case 'addGuest': {
-      const n = prompt('Player name')?.trim();
-      if (!n) return;
-      const { roster } = S.getState();
-      if (!roster.includes(n)) S.setRoster([...roster, n]);
-      if (!S.getState().session.present.includes(n)) S.togglePlayer(n);
+    case 'sit':
+      selected = null;
+      onSit(name);
       break;
-    }
     case 'pick':
       e.stopPropagation();
       onPick(name);
       return;
-    case 'bench':
-      if (selected) {
-        S.bench(selected);
-        selected = null;
-      }
-      break;
-    case 'unbench':
-      if (selected) {
-        S.unbench(selected);
-        selected = null;
-      }
-      break;
     case 'win': {
       selected = null;
-      const m = S.getState().session.match;
-      const team = m.sides[+t.dataset.side];
+      const team = S.getState().session.match.sides[+t.dataset.side];
       S.win(+t.dataset.side);
-      toast(`${icon('trophy')} ${esc(team.join(' + '))} won`, true);
+      toast(`${icon('trophy')} ${esc(team.join(' & '))} won`, true);
       break;
     }
     case 'toastUndo':
@@ -357,20 +333,14 @@ $('#doneBtn').onclick = () => {
   const s = S.getState().session;
   if (!confirm(`Done for ${s.date}? Stamps ${s.history.length} matches into the stats.`)) return;
   selected = null;
-  if (S.done()) toast(`${icon('done')} Day stamped`, true);
+  if (S.done()) toast(`${icon('check')} Day stamped`, true);
 };
 
-$('#syncBtn').onclick = () => (S.getApiUrl() ? S.flush().then(S.pull) : openSettings());
-$('#statsBtn').onclick = () => {
-  statsOffset = 0;
-  renderStats();
-  $('#statsDlg').showModal();
-};
 const openSettings = () => {
   renderSettings();
   $('#settingsDlg').showModal();
 };
-$('#settingsBtn').onclick = openSettings;
+$('#syncLine').onclick = openSettings;
 
 document.querySelectorAll('dialog').forEach((d) => {
   d.addEventListener('click', (e) => {
@@ -389,6 +359,20 @@ $('#statsSeg').onclick = (e) => {
 };
 $('#prevPeriod').onclick = () => (statsOffset--, renderStats());
 $('#nextPeriod').onclick = () => (statsOffset++, renderStats());
+$('#clearPeriod').onclick = () => {
+  const rows = periodRows();
+  const sessions = [...new Set(rows.map((r) => r.session))];
+  const days = new Set(rows.map((r) => r.date)).size;
+  if (!sessions.length) return;
+  if (
+    !confirm(
+      `Delete ${days} stamped day${days === 1 ? '' : 's'} from ${period().label}? This can’t be undone.`,
+    )
+  )
+    return;
+  S.deleteStamped(sessions);
+  toast('Deleted');
+};
 
 $('#rosterList').onclick = (e) => {
   const b = e.target.closest('[data-remove]');
