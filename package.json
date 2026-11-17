@@ -1,0 +1,10 @@
+{
+  "name": "racquetball-tracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "serve": "npx --yes http-server -c-1 -p 8080 .",
+    "icons": "node tools/make-icons.mjs"
+  }
+}
