@@ -140,13 +140,60 @@ test('swap moves players between teams and the bench', () => {
     ],
     out: ['E'],
   });
-  assert.deepEqual(L.swapPlayers(m, 'A', 'E'), {
+  const benched = L.swapPlayers(m, 'A', 'E', [], seeded(1));
+  assert.deepEqual(benched.out, ['A']);
+  assert.deepEqual(benched.sides.flat().sort(), ['B', 'C', 'D', 'E']);
+});
+
+test('changing who sits out always reshuffles the teams and keeps the last winners apart', () => {
+  for (let seed = 1; seed <= 200; seed++) {
+    const rng = seeded(seed);
+    let s = checkIn(FIVE, rng);
+    s = L.recordWin(s, Math.floor(rng() * 2), rng);
+    const winners = L.winnersOf(s.history.at(-1));
+    const sitter = s.match.out[0];
+    const goer = L.onCourt(s.match)[Math.floor(rng() * 4)];
+    const inPlace = s.match.sides.map((t) => t.map((p) => (p === goer ? sitter : p)));
+    const next = L.swapPlayers(s.match, goer, sitter, s.history, rng);
+    assert.deepEqual(next.out, [goer]);
+    assert.ok(L.onCourt(next).includes(sitter));
+    assert.ok(!teammates(next.sides, ...winners), `seed ${seed}: winners teamed`);
+    const legal = L.arrangements(L.onCourt(next), s.history).filter(
+      (o) => !teammates(o.sides, ...inPlace[0]) || !teammates(o.sides, ...inPlace[1]),
+    );
+    if (legal.length) {
+      assert.ok(
+        !(teammates(next.sides, ...inPlace[0]) && teammates(next.sides, ...inPlace[1])),
+        `seed ${seed}: newcomer just took the old spot`,
+      );
+    }
+  }
+});
+
+test('a manual swap cannot team up the last winning pair', () => {
+  const history = [
+    {
+      sides: [
+        ['A', 'B'],
+        ['C', 'D'],
+      ],
+      out: ['E'],
+      win: 0,
+      t: 0,
+    },
+  ];
+  const m = {
     sides: [
-      ['E', 'B'],
-      ['C', 'D'],
+      ['A', 'C'],
+      ['B', 'D'],
     ],
-    out: ['A'],
-  });
+    out: ['E'],
+  };
+  assert.equal(L.swapPlayers(m, 'C', 'B', history), m, 'refused: A & B just won');
+  assert.deepEqual(L.swapPlayers(m, 'C', 'D', history).sides, [
+    ['A', 'D'],
+    ['B', 'C'],
+  ]);
 });
 
 test('reshuffle picks a different legal split and keeps the bench', () => {
@@ -166,13 +213,17 @@ test('reshuffle picks a different legal split and keeps the bench', () => {
   }
 });
 
-test('dayRows and aggregate produce the stamped rows and period totals', () => {
+test('dayRows and aggregate produce the per-day rows and period totals', () => {
   const rng = seeded(11);
   let s = checkIn(FIVE, rng);
   for (let i = 0; i < 6; i++) s = L.recordWin(s, 0, rng);
-  const { days, matches } = L.dayRows(s, 'now');
+  const { days, matches } = L.dayRows(s.date, s.history, 'now');
   assert.equal(days.length, 5);
   assert.equal(matches.length, 6);
+  assert.ok(
+    days.every((r) => r[0] === s.date && r[1] === s.date),
+    'rows are keyed by date',
+  );
   assert.equal(
     days.reduce((n, r) => n + r[3], 0),
     24,
@@ -192,4 +243,29 @@ test('dayRows and aggregate produce the stamped rows and period totals', () => {
     agg.reduce((n, r) => n + r.wins, 0),
     12,
   );
+});
+
+test('crown: most wins then fewest losses; poop: most losses then fewest wins; ties get nothing', () => {
+  const m = (a, b, win, out = []) => ({ sides: [a, b], out, win, t: 0 });
+  const h = [
+    m(['A', 'B'], ['C', 'D'], 0, ['E']),
+    m(['A', 'C'], ['B', 'E'], 0, ['D']),
+    m(['A', 'E'], ['C', 'D'], 1, ['B']),
+  ];
+  // A 2-1, B 1-1, C 2-1, D 1-2, E 0-2: crown tied all the way; poop tie broken by fewer wins
+  assert.deepEqual(L.dayStars(h), { crown: null, poop: 'E' });
+  // A 3-1, B 1-2, C 2-1, D 2-2, E 0-3
+  assert.deepEqual(L.dayStars([...h, m(['A', 'D'], ['B', 'E'], 0, ['C'])]), { crown: 'A', poop: 'E' });
+  // A 2-0 beats C 2-1 on losses; D 0-3 has the most losses
+  const h3 = [
+    m(['A', 'B'], ['C', 'D'], 0),
+    m(['A', 'C'], ['B', 'D'], 0),
+    m(['C', 'E'], ['B', 'D'], 0, ['A']),
+  ];
+  assert.deepEqual(L.dayStars(h3), { crown: 'A', poop: 'D' });
+  // A 1-1, B 1-1, C 1-1, D 0-1, E 1-0: E has no losses; D lost once with no wins
+  const h4 = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['C', 'E'], ['A', 'B'], 0, ['D'])];
+  assert.deepEqual(L.dayStars(h4), { crown: 'E', poop: 'D' });
+  assert.deepEqual(L.dayStars([m(['A', 'B'], ['C', 'D'], 0)]), { crown: null, poop: null });
+  assert.deepEqual(L.dayStars([]), { crown: null, poop: null });
 });

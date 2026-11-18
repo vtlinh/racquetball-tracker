@@ -7,9 +7,9 @@
  *
  * GET  -> { ok, state: {updatedAt, data}, roster: [...], days: [...] }
  * POST (text/plain JSON body) with action:
- *   saveState { updatedAt, state }   live session + undo stack (State tab, chunked)
- *   stamp     { session, days, matches }  conclude a day (replaces rows of the same session)
- *   unstamp   { session }            remove a stamped session (undo of Done)
+ *   saveState { updatedAt, state }   results by day, live lineup + undo stack (State tab, chunked)
+ *   stamp     { session, days, matches }  write one day's rows (replaces rows of the same session/date)
+ *   unstamp   { session }            remove one day's rows
  *   roster    { roster }             replace the Players tab
  */
 

@@ -17,12 +17,17 @@
   <body>
     <main>
       <header class="top">
-        <h1>2v2 lineup</h1>
+        <div class="day-nav">
+          <button class="btn" id="prevDay" title="Previous day" data-icon="left"></button>
+          <div class="day-label" id="dayLabel">
+            <span id="dayText"></span>
+            <input type="date" id="dayPick" aria-label="Pick a day" />
+          </div>
+          <button class="btn" id="nextDay" title="Next day" data-icon="right"></button>
+        </div>
         <nav class="actions" aria-label="Actions">
-          <button class="btn" id="undoBtn" title="Undo last action" data-icon="undo"></button>
+          <button class="btn" id="undoBtn" title="Undo last result change" data-icon="undo"></button>
           <button class="btn" id="shuffleBtn" title="Reshuffle teams" data-icon="shuffle"></button>
-          <button class="btn" id="resetBtn" title="Reset — start again" data-icon="reset"></button>
-          <button class="btn primary" id="doneBtn" title="Done — stamp today's stats" data-icon="check"></button>
         </nav>
       </header>
       <button class="saved" id="syncLine" title="Settings: players and Google Sheet"></button>
@@ -35,11 +40,6 @@
         <div id="players"></div>
       </section>
 
-      <details class="fold" id="recent">
-        <summary>Recent results</summary>
-        <div id="log" class="log"></div>
-      </details>
-
       <section class="stats-sec" aria-label="Stats">
         <div class="stats-bar">
           <div class="seg" id="statsSeg">
@@ -51,14 +51,11 @@
             <span id="periodLabel"></span>
             <button class="btn" id="nextPeriod" title="Next" data-icon="right"></button>
           </div>
-          <button class="btn" id="clearPeriod" title="Delete stamped days in this period" data-icon="trash"></button>
+          <button class="btn" id="clearPeriod" title="Delete all results in this period" data-icon="trash"></button>
         </div>
         <div id="statsBody"></div>
         <p class="note" id="statsNote"></p>
-        <details class="fold" id="daysFold">
-          <summary>Days</summary>
-          <div id="daysList"></div>
-        </details>
+        <div id="daysList" class="days"></div>
       </section>
     </main>
 

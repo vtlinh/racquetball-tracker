@@ -209,11 +209,27 @@ export function unbenchPlayer(match, name, history, rng = Math.random) {
   };
 }
 
-/** Swap two players' spots (court<->court or court<->bench). */
-export function swapPlayers(match, a, b) {
+/**
+ * Swap two players' spots. Court<->bench changes who plays, so the teams are re-picked (never just
+ * the newcomer dropped into the old spot when another legal split exists). Court<->court swaps that
+ * would team up the last winning pair are refused (the same match is returned).
+ */
+export function swapPlayers(match, a, b, history = [], rng = Math.random) {
   if (!match || a === b) return match;
   const sw = (p) => (p === a ? b : p === b ? a : p);
-  return { sides: match.sides.map((t) => t.map(sw)), out: match.out.map(sw) };
+  const swapped = { sides: match.sides.map((t) => t.map(sw)), out: match.out.map(sw) };
+  const benchChanged = match.out.includes(a) !== match.out.includes(b);
+  if (benchChanged) {
+    const active = onCourt(swapped);
+    if (active.length !== 4) return swapped;
+    const inPlace = matchupKey(swapped.sides);
+    const all = arrangements(shuffle(active, rng), history);
+    const fresh = all.filter((o) => matchupKey(o.sides) !== inPlace);
+    const pick = pickBest(fresh.length ? fresh : all, rng);
+    return pick ? { sides: pick.sides, out: swapped.out } : swapped;
+  }
+  const blocked = blockedPair(history);
+  return swapped.sides.some((t) => isBlocked(t, blocked)) ? match : swapped;
 }
 
 export function recordWin(session, sideIdx, rng = Math.random, now = Date.now()) {
@@ -232,23 +248,23 @@ export function setPresent(session, name, isPresent, rng = Math.random) {
   return { ...session, date, present, seen, match: planMatch(present, session.history, rng) };
 }
 
-/** Rows to stamp into the Days and Matches tabs when the day is concluded. */
-export function dayRows(session, stampedAt = new Date().toISOString()) {
-  const names = session.seen.length ? session.seen : session.present;
-  const st = playerStats(session.history, names);
+/** Rows for the Days and Matches tabs. A day's rows are keyed by its date (the Session column). */
+export function dayRows(date, history, stampedAt = new Date().toISOString()) {
+  const names = [...new Set(history.flatMap((m) => [...m.sides.flat(), ...(m.out || [])]))];
+  const st = playerStats(history, names);
   const days = names.map((p) => {
     const r = st[p];
-    return [session.date, session.id, p, r.played, r.wins, r.losses, r.out, stampedAt];
+    return [date, date, p, r.played, r.wins, r.losses, r.out, stampedAt];
   });
   const hhmm = (t) => {
     const d = new Date(t);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
-  const matches = session.history.map((m, i) => {
+  const matches = history.map((m, i) => {
     const sides = m.sides.map((t) => t.join('+'));
     return [
-      session.date,
-      session.id,
+      date,
+      date,
       i + 1,
       modeOf(m.sides),
       sides[0] || '',
@@ -280,3 +296,23 @@ export function aggregate(rows, prefix) {
 }
 
 export const winPct = (r) => (r.played ? r.wins / r.played : 0);
+
+/**
+ * Crown: most wins, then fewest losses. Poop: most losses, then fewest wins.
+ * A tie that survives the tiebreak names no one; someone holding both keeps only the crown.
+ */
+export const dayStars = (history) =>
+  starsOf(Object.entries(playerStats(history)).map(([player, r]) => ({ player, ...r })));
+
+/** Same as dayStars, from per-player totals ({ player, played, wins, losses }). */
+export function starsOf(records) {
+  const ranked = records.filter((r) => r.played).map((r) => ({ p: r.player, w: r.wins, l: r.losses }));
+  if (ranked.length < 2) return { crown: null, poop: null };
+  const outright = (key) => {
+    const [a, b] = [...ranked].sort((x, y) => cmpKey(key(x), key(y)));
+    return cmpKey(key(a), key(b)) === 0 ? null : a.p;
+  };
+  const crown = outright((r) => [-r.w, r.l]);
+  const poop = outright((r) => [-r.l, r.w]);
+  return { crown, poop: poop === crown ? null : poop };
+}

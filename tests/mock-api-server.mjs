@@ -14,7 +14,8 @@ http
       const json = req.method === 'POST' ? backend.post(JSON.parse(body || '{}')) : backend.get();
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify(json));
-      if (req.method === 'POST') console.log(JSON.parse(body).action, '->', JSON.stringify(json).slice(0, 80));
+      if (req.method === 'POST')
+        console.log(JSON.parse(body).action, '->', JSON.stringify(json).slice(0, 80));
     });
   })
   .listen(port, () => console.log(`mock Apps Script API on http://localhost:${port}/exec`));

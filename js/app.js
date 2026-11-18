@@ -10,10 +10,19 @@ const esc = (s) =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   );
 const byName = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' });
+const dayName = (date) =>
+  new Date(`${date}T12:00`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+const matchesText = (n) => `${n} match${n === 1 ? '' : 'es'}`;
+const star = (name, { crown, poop }) => (name === crown ? ' 👑' : name === poop ? ' 💩' : '');
 
 let selected = null;
 let statsScope = 'month';
 let statsOffset = 0;
+const dayOpen = new Map();
 
 /** Only touch the DOM when markup changed, so a background re-render can't swallow a tap mid-press. */
 function put(el, html) {
@@ -28,22 +37,32 @@ const nameBtn = (name, cls = '') =>
 // ---- render ----------------------------------------------------------------
 
 function render() {
-  const { session } = S.getState();
-  renderTools(session);
+  const { live } = S.getState();
+  const history = S.dayHistory();
+  renderDay();
+  renderTools(live);
   renderSync();
-  renderCourt(session);
-  renderOut(session);
-  renderPlayers(session);
-  renderLog(session);
+  renderCourt(live);
+  renderOut(live, history);
+  renderPlayers(live, history);
   renderStats();
   if ($('#settingsDlg').open) renderSettings();
 }
 
-function renderTools(session) {
+function renderDay() {
+  const date = S.getViewDate();
+  const today = S.isToday();
+  $('#dayText').textContent = today ? 'Today' : dayName(date);
+  $('#dayLabel').classList.toggle('past', !today);
+  $('#nextDay').disabled = today;
+  const pick = $('#dayPick');
+  pick.max = L.localDate();
+  if (document.activeElement !== pick) pick.value = date;
+}
+
+function renderTools(live) {
   $('#undoBtn').disabled = !S.canUndo();
-  $('#shuffleBtn').disabled = !session.match || L.onCourt(session.match).length !== 4;
-  $('#doneBtn').disabled = !session.history.length;
-  $('#resetBtn').disabled = !session.history.length && !session.present.length;
+  $('#shuffleBtn').disabled = !live.match || L.onCourt(live.match).length !== 4;
 }
 
 function renderSync() {
@@ -63,11 +82,11 @@ function renderSync() {
   el.classList.toggle('err', status === 'error');
 }
 
-function renderCourt(session) {
-  const m = session.match;
+function renderCourt(live) {
+  const m = live.match;
   const el = $('#court');
   if (!m) {
-    const n = session.present.length;
+    const n = live.present.length;
     put(el, `<p class="empty">${n ? 'Need at least 2 players' : 'Check in who’s here below'}</p>`);
     return;
   }
@@ -83,14 +102,14 @@ function renderCourt(session) {
   put(el, `<div class="teams">${teams.join('<div class="vs"><span>vs</span></div>')}</div>`);
 }
 
-function renderOut(session) {
-  const m = session.match;
+function renderOut(live, history) {
+  const m = live.match;
   const el = $('#outRow');
   if (!m) {
     put(el, '');
     return;
   }
-  const blocked = L.blockedPair(session.history);
+  const blocked = L.blockedPair(history);
   const clash = blocked && m.sides.some((t) => t.length === 2 && blocked.every((p) => t.includes(p)));
   const hint = selected
     ? 'tap another name'
@@ -105,20 +124,22 @@ function renderOut(session) {
   );
 }
 
-function renderPlayers(session) {
+function renderPlayers(live, history) {
   const { roster } = S.getState();
-  const names = [...new Set([...roster, ...session.present, ...session.seen])].sort(byName);
-  const st = L.playerStats(session.history, names);
-  const m = session.match;
+  const played = history.flatMap((m) => [...m.sides.flat(), ...(m.out || [])]);
+  const names = [...new Set([...roster, ...live.present, ...played])].sort(byName);
+  const st = L.playerStats(history, names);
+  const stars = L.dayStars(history);
+  const m = live.match;
   put(
     $('#players'),
     names
       .map((p) => {
-        const here = session.present.includes(p);
+        const here = live.present.includes(p);
         const out = !!m?.out.includes(p);
         const r = st[p];
         return `<div class="prow ${here ? '' : 'away'}">
-          <span class="pname">${esc(p)}</span>
+          <span class="pname">${esc(p)}${star(p, stars)}</span>
           <span>${r.played}</span><span>${r.wins}</span><span>${r.out}</span>
           <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" ${here ? '' : 'disabled'}
             title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
@@ -130,24 +151,7 @@ function renderPlayers(session) {
   );
 }
 
-function renderLog(session) {
-  const h = session.history;
-  const items = h
-    .map((m, i) => {
-      const win = m.sides[m.win].join(' & ');
-      const lose = m.sides
-        .filter((_, j) => j !== m.win)
-        .map((t) => t.join(' & '))
-        .join(', ');
-      const out = m.out?.length ? `<span class="muted"> · ${esc(m.out.join(', '))} sat</span>` : '';
-      return `<li><b>${i + 1}</b><span><span class="w">${esc(win)}</span> beat ${esc(lose)}${out}</span></li>`;
-    })
-    .reverse()
-    .join('');
-  put($('#log'), h.length ? `<ol>${items}</ol>` : '<p class="muted small">No results yet today.</p>');
-}
-
-// ---- stats -------------------------------------------------------------------
+// ---- stats and results by day -------------------------------------------------
 
 function period() {
   const d = new Date();
@@ -163,29 +167,17 @@ function period() {
   return { prefix: y, label: y };
 }
 
-/** Days rows don't carry a match count; whoever was there all session played or sat every match. */
-function matchCount(rows) {
-  const most = {};
-  for (const r of rows) most[r.session] = Math.max(most[r.session] || 0, (+r.played || 0) + (+r.out || 0));
-  return Object.values(most).reduce((a, b) => a + b, 0);
-}
-
-const matchesText = (n) => `${n} match${n === 1 ? '' : 'es'}`;
-
-function periodRows() {
-  const { prefix } = period();
-  return S.getState().days.filter((d) => String(d.date).startsWith(prefix));
-}
+const periodDays = () => S.allDays().filter((d) => d.date.startsWith(period().prefix));
 
 function renderStats() {
   document
     .querySelectorAll('#statsSeg button')
     .forEach((b) => b.classList.toggle('on', b.dataset.scope === statsScope));
   $('#periodLabel').textContent = period().label;
-  const rows = periodRows();
-  $('#clearPeriod').disabled = !rows.length;
+  const days = periodDays();
+  $('#clearPeriod').disabled = !days.length;
 
-  const agg = L.aggregate(rows).sort((a, b) => byName(a.player, b.player));
+  const agg = L.aggregate(days.flatMap((d) => d.rows)).sort((a, b) => byName(a.player, b.player));
   put(
     $('#statsBody'),
     agg.length
@@ -199,32 +191,58 @@ function renderStats() {
                 }</td><td>${r.out}</td></tr>`,
             )
             .join('')}</tbody></table>`
-      : '<p class="stats empty">No stamped days</p>',
+      : '<p class="stats empty">No results</p>',
   );
 
-  const dates = [...new Set(rows.map((r) => r.date))].sort().reverse();
-  $('#statsNote').textContent = rows.length
-    ? `${dates.length} day${dates.length === 1 ? '' : 's'} stamped, ${matchesText(matchCount(rows))}`
+  const matches = days.reduce((n, d) => n + d.matches, 0);
+  $('#statsNote').textContent = days.length
+    ? `${days.length} day${days.length === 1 ? '' : 's'}, ${matchesText(matches)}`
     : '';
-  $('#daysFold').hidden = !rows.length;
-  put(
-    $('#daysList'),
-    `<ul class="days">${dates
-      .map((dt) => {
-        const dayRows = rows.filter((r) => r.date === dt);
-        const line = L.aggregate(dayRows)
-          .sort((a, b) => byName(a.player, b.player))
-          .map((r) => `${esc(r.player)} ${r.wins}-${r.losses}`)
-          .join(' · ');
-        const label = new Date(`${dt}T12:00`).toLocaleDateString(undefined, {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-        });
-        return `<li><b>${esc(label)}</b><span class="muted">${matchesText(matchCount(dayRows))}</span><span>${line}</span></li>`;
-      })
-      .join('')}</ul>`,
+  put($('#daysList'), days.map((d, i) => dayGroup(d, i === 0)).join(''));
+}
+
+function resultLine(m) {
+  const win = m.sides[m.win].join(' & ');
+  const lose = m.sides
+    .filter((_, j) => j !== m.win)
+    .map((t) => t.join(' & '))
+    .join(', ');
+  const out = m.out?.length ? `<span class="muted"> · ${esc(m.out.join(', '))} sat</span>` : '';
+  return `<span class="w">${esc(win)}</span> beat ${esc(lose)}${out}`;
+}
+
+function dayGroup(day, newest) {
+  const { date, history } = day;
+  const viewing = date === S.getViewDate();
+  const open = dayOpen.has(date) ? dayOpen.get(date) : newest || viewing;
+  const totals = L.aggregate(day.rows).sort(
+    (a, b) => b.wins - a.wins || a.losses - b.losses || byName(a.player, b.player),
   );
+  const stars = L.starsOf(totals);
+  const standings = totals
+    .map((r) => `<span><b>${esc(r.player)}</b>${star(r.player, stars)} ${r.wins}-${r.losses}</span>`)
+    .join('');
+  const body = history
+    ? `<ol class="results">${history
+        .map(
+          (m, i) => `<li>
+            <b>${i + 1}</b><span class="res">${resultLine(m)}</span>
+            <button class="btn sm" data-act="flip" data-date="${date}" data-i="${i}" title="Change winner">${icon('swap')}</button>
+            <button class="btn sm" data-act="delMatch" data-date="${date}" data-i="${i}" title="Delete result">${icon('x')}</button>
+          </li>`,
+        )
+        .reverse()
+        .join('')}</ol>`
+    : `<p class="legacy">No match details for this day.</p>`;
+  return `<details class="day ${viewing ? 'viewing' : ''}" data-date="${date}" ${open ? 'open' : ''}>
+    <summary>
+      <span class="day-title">${esc(dayName(date))}</span>
+      <span class="muted">${matchesText(day.matches)}</span>
+      ${viewing ? '' : `<button class="btn sm" data-act="goDay" data-date="${date}" title="Add results to this day">${icon('pencil')}</button>`}
+      <span class="standings">${standings}</span>
+    </summary>
+    ${body}
+  </details>`;
 }
 
 // ---- settings dialog ----------------------------------------------------------
@@ -244,7 +262,7 @@ function renderSettings() {
     ? 'Not connected: data is kept in this browser until the sheet is connected.'
     : status === 'error'
       ? `Connected, last sync failed: ${error}`
-      : 'Connected: live session, days and roster are stored in the sheet.';
+      : 'Connected: results, the live lineup and the roster are stored in the sheet.';
 }
 
 // ---- events ---------------------------------------------------------------------
@@ -262,19 +280,29 @@ function onPick(name) {
   if (!selected) selected = name;
   else if (selected === name) selected = null;
   else {
-    S.swap(selected, name);
+    if (!S.swap(selected, name)) refusedSwap();
     selected = null;
   }
   render();
 }
 
+function refusedSwap() {
+  const pair = L.blockedPair(S.dayHistory());
+  if (pair) toast(`${esc(pair.join(' & '))} just won, so they can’t team up next`);
+}
+
 function onSit(name) {
-  const { session } = S.getState();
-  const m = session.match;
+  const m = S.getState().live.match;
   if (!m) return;
   if (m.out.includes(name)) S.unbench(name);
   else if (m.out.length) S.swap(name, m.out[0]);
   else S.bench(name);
+}
+
+function goToDay(date) {
+  selected = null;
+  S.setViewDate(date);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 document.addEventListener('click', (e) => {
@@ -287,7 +315,8 @@ document.addEventListener('click', (e) => {
     }
     return;
   }
-  const name = t.dataset.name;
+  const { name, date } = t.dataset;
+  const i = +t.dataset.i;
   switch (act) {
     case 'toggle':
       selected = null;
@@ -303,11 +332,27 @@ document.addEventListener('click', (e) => {
       return;
     case 'win': {
       selected = null;
-      const team = S.getState().session.match.sides[+t.dataset.side];
+      const team = S.getState().live.match.sides[+t.dataset.side];
       S.win(+t.dataset.side);
-      toast(`${icon('trophy')} ${esc(team.join(' & '))} won`, true);
+      const when = S.isToday() ? '' : ` (${dayName(S.getViewDate())})`;
+      toast(`${icon('trophy')} ${esc(team.join(' & '))} won${esc(when)}`, true);
       break;
     }
+    case 'flip': {
+      const m = S.dayHistory(date)[i];
+      if (m) S.setWinner(date, i, (m.win + 1) % m.sides.length);
+      toast('Winner changed', true);
+      break;
+    }
+    case 'delMatch':
+      if (!confirm(`Delete result ${i + 1} from ${dayName(date)}?`)) return;
+      S.deleteMatch(date, i);
+      toast('Result deleted', true);
+      break;
+    case 'goDay':
+      e.preventDefault();
+      goToDay(date);
+      return;
     case 'toastUndo':
       $('#toast').hidden = true;
       S.undo();
@@ -316,6 +361,32 @@ document.addEventListener('click', (e) => {
   render();
 });
 
+$('#daysList').addEventListener(
+  'toggle',
+  (e) => {
+    const d = e.target.closest?.('details.day');
+    if (d) dayOpen.set(d.dataset.date, d.open);
+  },
+  true,
+);
+
+const shiftDay = (n) => {
+  const d = new Date(`${S.getViewDate()}T12:00`);
+  d.setDate(d.getDate() + n);
+  goToDay(L.localDate(d));
+};
+$('#prevDay').onclick = () => shiftDay(-1);
+$('#nextDay').onclick = () => shiftDay(1);
+$('#dayPick').onchange = (e) => e.target.value && goToDay(e.target.value);
+$('#dayLabel').onclick = (e) => {
+  if (e.target === $('#dayPick')) return;
+  try {
+    $('#dayPick').showPicker();
+  } catch {
+    $('#dayPick').focus();
+  }
+};
+
 $('#undoBtn').onclick = () => {
   selected = null;
   S.undo();
@@ -323,17 +394,6 @@ $('#undoBtn').onclick = () => {
 $('#shuffleBtn').onclick = () => {
   selected = null;
   S.reshuffle();
-};
-$('#resetBtn').onclick = () => {
-  if (!confirm('Start again? Today’s matches are cleared (you can still undo).')) return;
-  selected = null;
-  S.reset();
-};
-$('#doneBtn').onclick = () => {
-  const s = S.getState().session;
-  if (!confirm(`Done for ${s.date}? Stamps ${s.history.length} matches into the stats.`)) return;
-  selected = null;
-  if (S.done()) toast(`${icon('check')} Day stamped`, true);
 };
 
 const openSettings = () => {
@@ -360,17 +420,16 @@ $('#statsSeg').onclick = (e) => {
 $('#prevPeriod').onclick = () => (statsOffset--, renderStats());
 $('#nextPeriod').onclick = () => (statsOffset++, renderStats());
 $('#clearPeriod').onclick = () => {
-  const rows = periodRows();
-  const sessions = [...new Set(rows.map((r) => r.session))];
-  const days = new Set(rows.map((r) => r.date)).size;
-  if (!sessions.length) return;
+  const days = periodDays();
+  if (!days.length) return;
+  const n = days.length;
   if (
     !confirm(
-      `Delete ${days} stamped day${days === 1 ? '' : 's'} from ${period().label}? This can’t be undone.`,
+      `Delete all results for ${n} day${n === 1 ? '' : 's'} in ${period().label}? This can’t be undone.`,
     )
   )
     return;
-  S.deleteStamped(sessions);
+  S.deleteDays(days.map((d) => d.date));
   toast('Deleted');
 };
 

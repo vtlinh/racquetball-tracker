@@ -13,33 +13,40 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 - **3 players:** cut-throat (one winner). **2 players:** 1v1.
 - **The winning pair is never teamed together in the next match.** Among the remaining options, the split with the fewest repeat teammates today is picked, so pairings spread out.
 - **Manual overrides:** tap a name, then tap another name to swap them (works between teams and the "Out" player). The coffee cup on a player's row sits them out: with someone already out they trade places, and with nobody out (4 players) the game becomes cut-throat. Tap the cup again to bring them back. An override applies to that match only.
+- **Changing who sits out always reshuffles the teams**, so the player coming in doesn't just take the old spot. A swap that would put the last winning pair on the same team is refused, so that rule holds for manual changes too.
 - The shuffle button re-splits the current players into a different legal pairing.
+
+## Results by day
+
+- Every result is saved under its date as soon as you tap **Win**. There's no end-of-day step: each day's rows in the sheet are rewritten automatically whenever that day changes.
+- The day picker at the top (‹ Today ›) chooses which day new results go to. Tap the date to jump to any past day, or use the pencil on a day in the results list. A past day is shown in gold.
+- Below the Month/Year stats, results are grouped by day, newest day first and newest result first. Each day shows every player's wins-losses. Use ⇄ to change a result's winner and × to delete it.
+- 👑 goes to the day's most wins (a tie goes to whoever lost fewer); 💩 goes to the most losses (a tie goes to whoever won fewer). If it's still tied, nobody gets it.
 
 ## Buttons
 
 | Icon | Action |
 | --- | --- |
-| Win (on each team) | That team or player won. The next lineup is picked automatically. |
-| Undo | Reverts the last action, whether a result, a check-in, an edit, Reset or Done. You can undo all the way back to an empty session. |
+| Win (on each team) | That team or player won, recorded on the day shown at the top. The next lineup is picked automatically. |
+| Undo | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone. |
 | Shuffle | Re-split the teams. |
-| Reset | Start over with the same players checked in. |
-| Check | **Done**: stamps today's per-player stats into the sheet (`Days` and `Matches` tabs). |
+| ‹ date › | Pick the day results are recorded on. |
 | Coffee cup (player row) | Sit that player out (or bring them back). |
 | Circle-check (player row) | Check the player in or out. |
-| Month / Year, arrows | Stamped stats for a month or year. Trash deletes the stamped days in the shown period. |
+| Month / Year, arrows | Stats for a month or year, with that period's results by day. Trash deletes every result in the shown period. |
 | "Saved in this browser." | Tap it for settings: roster and the Google Sheet connection. |
 
-Today's live counts (played, won, sat) are on each player's row; past matches are under "Recent results".
+The player rows show played, won and sat for the day shown at the top.
 
 ## Google Sheet storage
 
 The sheet has these tabs (set up already):
 
-- `Days`: one row per player per concluded day (played, wins, losses, sat out).
-- `Matches`: every match of every concluded day.
+- `Days`: one row per player per day (played, wins, losses, sat out), keyed by date.
+- `Matches`: every match, keyed by date.
 - `Monthly` and `Yearly`: per-player summaries built with `QUERY` formulas over `Days`.
 - `Players`: the roster.
-- `State`: the live session and undo history (managed by the app). This is how several phones share the same session.
+- `State`: all results by day, the live lineup and the undo history (managed by the app). This is how several phones share the same session.
 
 Google doesn't allow anonymous writes to a sheet through its API, even when the sheet is world-editable. So the app talks to a small Apps Script web app bound to the sheet ([`apps-script/Code.gs`](apps-script/Code.gs)). It's a one-time setup:
 

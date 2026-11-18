@@ -3,30 +3,62 @@ import { DEFAULT_API_URL } from './config.js';
 
 const STATE_KEY = 'rb.state.v1';
 const CFG_KEY = 'rb.cfg.v1';
-const UNDO_LIMIT = 500;
+const UNDO_LIMIT = 100;
+
+const blankLive = () => ({ present: [], match: null });
 
 const listeners = new Set();
-let state = loadLocal();
-let cfg = loadCfg();
-let sync = { status: cfg.apiUrl ? 'idle' : 'local', error: '' };
 let flushing = null;
 let inflight = null;
 let flushTimer = 0;
+let viewDate = null;
+let state = loadLocal();
+let cfg = loadCfg();
+let sync = { status: cfg.apiUrl ? 'idle' : 'local', error: '' };
 
-function loadLocal() {
-  try {
-    const s = JSON.parse(localStorage.getItem(STATE_KEY));
-    if (s && s.session) return { pending: [], dirty: false, days: [], undo: [], ...s };
-  } catch {}
+/**
+ * state.log    { 'YYYY-MM-DD': [{ sides, out, win, t }] } — every result, by day
+ * state.live   { present, match } — who is here and the lineup on court
+ * state.undo   [{ date, history, match }] — match changes only
+ * state.legacy stamped Days rows that have no match log (v1 data, other devices' unsynced days)
+ */
+function blank() {
   return {
     roster: [...L.DEFAULT_ROSTER],
-    session: L.newSession(),
+    live: blankLive(),
+    log: {},
     undo: [],
-    days: [],
+    legacy: [],
     updatedAt: 0,
     pending: [],
     dirty: false,
   };
+}
+
+/** v1 kept one live session that was stamped by hand; its unstamped matches become that day's log. */
+function fromV1(session) {
+  const log = {};
+  if (session?.history?.length) log[session.date] = session.history;
+  return { live: { present: session?.present || [], match: session?.match || null }, log };
+}
+
+function loadLocal() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STATE_KEY));
+    if (s?.log) return { ...blank(), ...s };
+    if (s?.session) {
+      const v2 = {
+        ...blank(),
+        roster: s.roster || L.DEFAULT_ROSTER,
+        pending: s.pending || [],
+        legacy: s.days || [],
+      };
+      Object.assign(v2, fromV1(s.session), { dirty: true, updatedAt: Date.now() });
+      for (const [date, h] of Object.entries(v2.log)) v2.pending = stampOps(v2.pending, date, h);
+      return v2;
+    }
+  } catch {}
+  return blank();
 }
 
 function loadCfg() {
@@ -65,89 +97,171 @@ function commit(next, { remoteState = true } = {}) {
   scheduleFlush();
 }
 
-function snapshot(kind = 'step', extra = {}) {
-  const { history, ...rest } = state.session;
-  const entry = kind === 'step' ? { s: rest, h: history.length } : { full: state.session, ...extra };
-  return [...state.undo, entry].slice(-UNDO_LIMIT);
+// ---- the day being viewed/recorded (this device only) --------------------
+
+export const getViewDate = () => viewDate || L.localDate();
+export const isToday = () => getViewDate() === L.localDate();
+export function setViewDate(date) {
+  viewDate = !date || date >= L.localDate() ? null : date;
+  emit();
 }
 
-function act(nextSession, extra = {}) {
-  if (nextSession === state.session) return;
-  commit({ undo: snapshot(), session: nextSession, ...extra });
+export const dayHistory = (date = getViewDate()) => state.log[date] || [];
+
+// ---- per-day sync ---------------------------------------------------------
+
+/** Replace any queued write for this day with one that mirrors its current results. */
+function stampOps(pending, date, history) {
+  const rest = pending.filter(
+    (p) => !(p.session === date && (p.action === 'stamp' || p.action === 'unstamp') && p !== inflight),
+  );
+  if (!history.length) return [...rest, { action: 'unstamp', session: date }];
+  const { days, matches } = L.dayRows(date, history);
+  return [...rest, { action: 'stamp', session: date, days, matches }];
 }
 
-// ---- actions ------------------------------------------------------------
+function withDay(log, date, history) {
+  const next = { ...log };
+  if (history.length) next[date] = history;
+  else delete next[date];
+  return next;
+}
 
-export const togglePlayer = (name) =>
-  act(L.setPresent(state.session, name, !state.session.present.includes(name)));
-
-export const win = (sideIdx) => act(L.recordWin(state.session, sideIdx));
-
-const withMatch = (match) => match !== state.session.match && act({ ...state.session, match });
-
-export const swap = (a, b) => withMatch(L.swapPlayers(state.session.match, a, b));
-export const bench = (name) => withMatch(L.benchPlayer(state.session.match, name, state.session.history));
-export const unbench = (name) => withMatch(L.unbenchPlayer(state.session.match, name, state.session.history));
-export const reshuffle = () => withMatch(L.reshuffle(state.session.match, state.session.history));
-
-export function done() {
-  const s = state.session;
-  if (!s.history.length) return false;
-  const { days, matches } = L.dayRows(s);
-  const dayObjs = days.map(rowToDay);
+/** Change one day's results; undoable. `match` replaces the lineup when given. */
+function setDay(date, history, match) {
+  const entry = { date, history: dayHistory(date), match: state.live.match };
   commit({
-    undo: snapshot('full', { unstamp: s.id }),
-    session: L.newSession(),
-    days: [...state.days.filter((d) => d.session !== s.id), ...dayObjs],
-    pending: [...state.pending, { action: 'stamp', session: s.id, days, matches }],
+    log: withDay(state.log, date, history),
+    pending: stampOps(state.pending, date, history),
+    undo: [...state.undo, entry].slice(-UNDO_LIMIT),
+    ...(match !== undefined && { live: { ...state.live, match } }),
   });
-  return true;
 }
 
-export function reset() {
-  const keep = state.session.present;
-  let session = L.newSession();
-  for (const p of keep) session = L.setPresent(session, p, true);
-  commit({ undo: snapshot('full'), session });
+const session = (date = getViewDate()) => ({
+  date,
+  present: state.live.present,
+  seen: [],
+  match: state.live.match,
+  history: dayHistory(date),
+});
+
+// ---- results (undoable) ----------------------------------------------------
+
+export function win(sideIdx) {
+  const s = session();
+  const next = L.recordWin(s, sideIdx);
+  if (next !== s) setDay(s.date, next.history, next.match);
+}
+
+/** Change who won a recorded match. Fixing the latest result today re-picks the next lineup. */
+export function setWinner(date, idx, sideIdx) {
+  const h = dayHistory(date);
+  if (!h[idx] || h[idx].win === sideIdx) return;
+  const history = h.map((m, i) => (i === idx ? { ...m, win: sideIdx } : m));
+  const replan = date === getViewDate() && idx === h.length - 1;
+  setDay(date, history, replan ? L.planMatch(state.live.present, history) : undefined);
+}
+
+export function deleteMatch(date, idx) {
+  const h = dayHistory(date);
+  if (!h[idx]) return;
+  setDay(
+    date,
+    h.filter((_, i) => i !== idx),
+  );
 }
 
 export const canUndo = () => state.undo.length > 0;
 
 export function undo() {
-  if (!state.undo.length) return;
-  const undoStack = [...state.undo];
-  const e = undoStack.pop();
-  const next = { undo: undoStack };
-  if (e.full) {
-    next.session = e.full;
-    if (e.unstamp) {
-      next.days = state.days.filter((d) => d.session !== e.unstamp);
-      const stampQueued = state.pending.some(
-        (p) => p.action === 'stamp' && p.session === e.unstamp && p !== inflight,
-      );
-      next.pending = stampQueued
-        ? state.pending.filter((p) => p.session !== e.unstamp)
-        : [...state.pending, { action: 'unstamp', session: e.unstamp }];
-    }
-  } else {
-    next.session = { ...e.s, history: state.session.history.slice(0, e.h) };
-  }
-  commit(next);
+  const e = state.undo.at(-1);
+  if (!e) return;
+  const live = e.match
+    ? {
+        present: [...new Set([...state.live.present, ...L.onCourt(e.match), ...e.match.out])],
+        match: e.match,
+      }
+    : state.live;
+  commit({
+    undo: state.undo.slice(0, -1),
+    log: withDay(state.log, e.date, e.history),
+    pending: stampOps(state.pending, e.date, e.history),
+    live,
+  });
 }
 
-/** Remove stamped days for the given sessions, locally and in the sheet. */
-export function deleteStamped(sessions) {
-  const ids = new Set(sessions);
-  if (!ids.size) return;
-  let pending = [...state.pending];
-  for (const id of ids) {
-    const queued = pending.some((p) => p.action === 'stamp' && p.session === id && p !== inflight);
-    pending = queued
-      ? pending.filter((p) => p.session !== id)
-      : [...pending, { action: 'unstamp', session: id }];
+/** Delete whole days (local log and the sheet). Not undoable. */
+export function deleteDays(dates) {
+  const drop = new Set(dates);
+  let log = state.log;
+  let pending = state.pending;
+  for (const d of drop) {
+    log = withDay(log, d, []);
+    pending = stampOps(pending, d, []);
   }
-  commit({ days: state.days.filter((d) => !ids.has(d.session)), pending }, { remoteState: false });
+  const legacy = state.legacy.filter((r) => !drop.has(r.date));
+  for (const id of new Set(state.legacy.filter((r) => drop.has(r.date)).map((r) => r.session))) {
+    if (!drop.has(id)) pending = [...pending, { action: 'unstamp', session: id }];
+  }
+  commit({ log, pending, legacy, undo: state.undo.filter((e) => !drop.has(e.date)) });
 }
+
+// ---- lineup (not undoable) -------------------------------------------------
+
+export function togglePlayer(name) {
+  const s = session();
+  const next = L.setPresent(s, name, !s.present.includes(name));
+  if (next !== s) commit({ live: { present: next.present, match: next.match } });
+}
+
+function withMatch(match) {
+  if (match === state.live.match) return false;
+  commit({ live: { ...state.live, match } });
+  return true;
+}
+
+export const swap = (a, b) => withMatch(L.swapPlayers(state.live.match, a, b, dayHistory()));
+export const bench = (name) => withMatch(L.benchPlayer(state.live.match, name, dayHistory()));
+export const unbench = (name) => withMatch(L.unbenchPlayer(state.live.match, name, dayHistory()));
+export const reshuffle = () => withMatch(L.reshuffle(state.live.match, dayHistory()));
+
+// ---- stats ------------------------------------------------------------------
+
+const rowToDay = (r) => ({
+  date: r[0],
+  session: r[1],
+  player: r[2],
+  played: +r[3],
+  wins: +r[4],
+  losses: +r[5],
+  out: +r[6],
+});
+
+/** Days rows without a log don't carry a match count; whoever stayed all session played or sat every match. */
+function legacyMatches(rows) {
+  const most = {};
+  for (const r of rows) most[r.session] = Math.max(most[r.session] || 0, (+r.played || 0) + (+r.out || 0));
+  return Object.values(most).reduce((a, b) => a + b, 0);
+}
+
+/** Every day with results, newest first: { date, rows (per player), history (null for legacy), matches }. */
+export function allDays() {
+  const days = Object.entries(state.log).map(([date, history]) => ({
+    date,
+    history,
+    rows: L.dayRows(date, history).days.map(rowToDay),
+    matches: history.length,
+  }));
+  const logged = new Set(Object.keys(state.log));
+  const legacy = {};
+  for (const r of state.legacy) if (!logged.has(r.date)) (legacy[r.date] ||= []).push(r);
+  for (const [date, rows] of Object.entries(legacy))
+    days.push({ date, history: null, rows, matches: legacyMatches(rows) });
+  return days.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+// ---- settings -----------------------------------------------------------------
 
 export function setRoster(roster) {
   const clean = [...new Set(roster.map((n) => n.trim()).filter(Boolean))];
@@ -172,16 +286,6 @@ export function setApiUrl(url) {
 
 // ---- Google Sheet sync (Apps Script web app) -----------------------------
 
-const rowToDay = (r) => ({
-  date: r[0],
-  session: r[1],
-  player: r[2],
-  played: +r[3],
-  wins: +r[4],
-  losses: +r[5],
-  out: +r[6],
-});
-
 async function call(body) {
   const url = cfg.apiUrl;
   const res = body
@@ -204,17 +308,22 @@ function adoptRemote(remote) {
   if (Array.isArray(remote.days)) {
     const stamps = pendingSessions('stamp');
     const unstamps = pendingSessions('unstamp');
-    const localOnly = state.days.filter((d) => stamps.has(d.session));
-    next.days = [
+    next.legacy = [
       ...remote.days.filter((d) => !unstamps.has(d.session) && !stamps.has(d.session)),
-      ...localOnly,
+      ...state.legacy.filter((d) => stamps.has(d.session)),
     ];
   }
   if (remote.roster?.length && !state.pending.some((p) => p.action === 'roster')) next.roster = remote.roster;
   const rs = remote.state;
-  if (rs?.data?.session && rs.updatedAt > state.updatedAt && !state.dirty) {
-    next.session = rs.data.session;
-    next.undo = rs.data.undo || [];
+  const data = rs?.data;
+  if (data && rs.updatedAt > state.updatedAt && !state.dirty) {
+    if (data.log) {
+      next.log = data.log;
+      next.live = data.live || blankLive();
+      next.undo = data.undo || [];
+    } else if (data.session) {
+      Object.assign(next, fromV1(data.session), { undo: [] });
+    }
     next.updatedAt = rs.updatedAt;
   }
   state = { ...state, ...next };
@@ -268,7 +377,7 @@ async function drain() {
       const res = await call({
         action: 'saveState',
         updatedAt: state.updatedAt,
-        state: { session: state.session, undo: state.undo },
+        state: { log: state.log, live: state.live, undo: state.undo },
       });
       if (res.stale && res.state) adoptRemote(res);
     }
