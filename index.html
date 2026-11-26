@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=5" />
+    <link rel="stylesheet" href="css/styles.css?v=6" />
   </head>
   <body>
     <main>
@@ -36,10 +36,7 @@
       <section id="court" class="match"></section>
       <div id="outRow" class="out-row"></div>
 
-      <section class="players" aria-label="Today">
-        <div class="players-head"><span></span><span>Played</span><span>Won</span><span></span><span></span></div>
-        <div id="players"></div>
-      </section>
+      <section class="players" id="players" aria-label="Players"></section>
 
       <section class="stats-sec" aria-label="Stats">
         <div class="stats-bar">
@@ -102,6 +99,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=5"></script>
+    <script type="module" src="js/app.js?v=6"></script>
   </body>
 </html>

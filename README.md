@@ -7,12 +7,12 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 ## How lineups are picked
 
-- Tap the circle-check on a player's row to check them in or out (default roster: Rick, Leo, Linh, Nate, Doug). Anyone can join or leave mid-day, and the teams are reshuffled when they do.
+- Tap a player's name to include them in the lineup or leave them out (default roster: Rick, Leo, Linh, Nate, Doug). Anyone can join or leave mid-day, and the teams are reshuffled when they do.
 - **5 players:** 2v2 with one sitting out. At the start the sitter is random. After a result, the sitter comes from the losing team: whoever has played the most today (ties are broken randomly). The previous sitter always comes back in.
 - **4 players:** 2v2, nobody sits out.
 - **3 players:** cut-throat (one winner). **2 players:** 1v1.
 - **The winning pair is never teamed together in the next match.** Among the remaining options, the split with the fewest repeat teammates today is picked, so pairings spread out.
-- **Manual overrides:** tap a name, then tap another name to swap them (works between teams and the "Out" player). The coffee cup on a player's row sits them out: with someone already out they trade places, and with nobody out (4 players) the game becomes cut-throat. Tap the cup again to bring them back. An override applies to that match only.
+- **Manual overrides:** tap a name on the court, then tap another name to swap them (works between teams and the "Out" players). The coffee cup under a name sits that player out, and more than one player can sit. Tap the cup again to bring them back while the court has room for them. An override applies to that match only.
 - **Changing who sits out always reshuffles the teams**, so the player coming in doesn't just take the old spot. A swap that would put the last winning pair on the same team is refused, so that rule holds for manual changes too.
 - The shuffle button re-splits the current players into a different legal pairing.
 
@@ -25,19 +25,19 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 ## Buttons
 
-| Icon | Action |
-| --- | --- |
-| Win (on each team) | That team or player won, recorded on the day shown at the top, with the real time of the tap (`HH:MM` Eastern Time). The next lineup is picked automatically. |
-| Undo | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone. |
-| Redo | Puts back the last undone result change. It appears only after an undo, and a new result clears it. |
-| Shuffle | Re-split the teams. |
-| ‹ date › | Pick the day results are recorded on. |
-| Coffee cup (player row) | Sit that player out (or bring them back). |
-| Circle-check (player row) | Check the player in or out. |
-| Month / Year, arrows | Stats for a month or year, with that period's results by day. |
-| "Saved in this browser." | Tap it for settings: roster and the Google Sheet connection. |
+| Icon                      | Action                                                                                                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Win (on each team)        | That team or player won, recorded on the day shown at the top, with the real time of the tap (`HH:MM` Eastern Time). The next lineup is picked automatically. |
+| Undo                      | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone.                       |
+| Redo                      | Puts back the last undone result change. It appears only after an undo, and a new result clears it.                                                           |
+| Shuffle                   | Re-split the teams.                                                                                                                                           |
+| ‹ date ›                  | Pick the day results are recorded on.                                                                                                                         |
+| Player name               | Include that player in the lineup, or leave them out.                                                                                                         |
+| Coffee cup (under a name) | Sit that player out, or bring them back. Several players can sit at once.                                                                                     |
+| Month / Year, arrows      | Stats for a month or year, with that period's results by day.                                                                                                 |
+| "Saved in this browser."  | Tap it for settings: roster and the Google Sheet connection.                                                                                                  |
 
-The player rows show played and won for the day shown at the top.
+Played and won for the day are in the results at the bottom.
 
 ## Google Sheet storage
 
@@ -53,7 +53,7 @@ Google doesn't allow anonymous writes to a sheet through its API, even when the 
 
 1. Open the sheet and go to **Extensions → Apps Script**.
 2. Replace `Code.gs` with [`apps-script/Code.gs`](apps-script/Code.gs) (the app's settings have a copy button), then save.
-3. Go to **Deploy → New deployment → Web app**. Set *Execute as* to **Me** and *Who has access* to **Anyone**, then deploy and authorize.
+3. Go to **Deploy → New deployment → Web app**. Set _Execute as_ to **Me** and _Who has access_ to **Anyone**, then deploy and authorize.
 4. Copy the `/exec` URL into the app's settings. To configure another phone, open `https://vtlinh.github.io/racquetball-tracker/?api=<exec-url>` once. You can also put the URL in `DEFAULT_API_URL` in [`js/config.js`](js/config.js) so every device picks it up.
 
 Until the sheet is connected, everything is kept on the device. The device also caches the last state, so the app works offline. Changes made offline are sent to the sheet when the connection returns.
