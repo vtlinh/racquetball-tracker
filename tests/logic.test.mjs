@@ -312,12 +312,17 @@ test('points: +1/-1 in singles and doubles, +1.5/-1 in triples, sitters unchange
   assert.equal(dbl.E.score, 0);
   assert.equal(dbl.E.played, 0);
 
-  const single = L.playerStats([{ sides: [['A'], ['B']], out: [], win: 1, t: 0 }]);
+  const singleMatch = { sides: [['A'], ['B']], out: [], win: 1, t: 0 };
+  const single = L.playerStats([singleMatch]);
   assert.equal(single.A.score, -1);
   assert.equal(single.B.score, 1);
+  assert.equal(L.pointsFor(singleMatch, false), -1);
+  assert.equal(L.pointsFor(singleMatch, true), 1);
 
   const triple = [{ sides: [['A'], ['B'], ['C']], out: [], win: 0, t: 0 }];
   const cut = L.playerStats(triple);
+  assert.equal(cut.A.score, L.pointsFor(triple[0], true));
+  assert.equal(L.pointsFor(triple[0], true), 1.5);
   assert.equal(cut.A.score, 1.5);
   assert.equal(cut.B.score, -1);
   assert.equal(cut.C.score, -1);
