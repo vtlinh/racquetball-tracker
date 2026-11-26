@@ -335,14 +335,15 @@ export const winPct = (r) => (r.played ? r.wins / r.played : 0);
 
 /**
  * Crown: most wins, then fewest losses. Poop: most losses, then fewest wins.
- * A tie that survives the tiebreak names no one; someone holding both keeps only the crown.
+ * Only someone who played at least one game is eligible. A tie that survives the
+ * tiebreak names no one; someone holding both keeps only the crown.
  */
 export const dayStars = (history) =>
   starsOf(Object.entries(playerStats(history)).map(([player, r]) => ({ player, ...r })));
 
 /** Same as dayStars, from per-player totals ({ player, played, wins, losses }). */
 export function starsOf(records) {
-  const ranked = records.filter((r) => r.played).map((r) => ({ p: r.player, w: r.wins, l: r.losses }));
+  const ranked = records.filter((r) => r.played >= 1).map((r) => ({ p: r.player, w: r.wins, l: r.losses }));
   if (ranked.length < 2) return { crown: null, poop: null };
   const outright = (key) => {
     const [a, b] = [...ranked].sort((x, y) => cmpKey(key(x), key(y)));

@@ -17,7 +17,11 @@ const dayName = (date) =>
     day: 'numeric',
   });
 const matchesText = (n) => `${n} match${n === 1 ? '' : 'es'}`;
-const star = (name, { crown, poop }) => (name === crown ? ' 👑' : name === poop ? ' 💩' : '');
+/** Crown or poop for a player who played at least one game that day. Shown above the name. */
+const dayMark = (name, stars, played) =>
+  !(played >= 1) ? '' : name === stars.crown ? '👑' : name === stars.poop ? '💩' : '';
+const markHtml = (emoji) =>
+  `<span class="mark"${emoji === '👑' ? ' title="Most wins"' : emoji === '💩' ? ' title="Most losses"' : ''}>${emoji}</span>`;
 
 let selected = null;
 let statsScope = 'month';
@@ -111,6 +115,7 @@ function renderPlayers(live, history) {
   const { roster } = S.getState();
   const played = history.flatMap((m) => [...m.sides.flat(), ...(m.out || [])]);
   const names = [...new Set([...roster, ...live.present, ...played])].sort(byName);
+  const stats = L.playerStats(history, names);
   const stars = L.dayStars(history);
   const m = live.match;
   put(
@@ -120,10 +125,13 @@ function renderPlayers(live, history) {
         const here = live.present.includes(p);
         const out = !!m?.out.includes(p);
         return `<div class="pchip ${here ? '' : 'away'}">
-          <button class="pname ${here ? 'on' : ''}" data-act="toggle" data-name="${esc(p)}" aria-pressed="${here}"
-            title="${here ? `${esc(p)} is in the lineup — tap to leave` : `Include ${esc(p)} in the lineup`}">${esc(p)}${star(p, stars)}</button>
-          <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" aria-pressed="${out}" ${here ? '' : 'disabled'}
-            title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
+          ${markHtml(dayMark(p, stars, stats[p]?.played))}
+          <span class="pchip-line">
+            <button class="pname ${here ? 'on' : ''}" data-act="toggle" data-name="${esc(p)}" aria-pressed="${here}"
+              title="${here ? `${esc(p)} is in the lineup — tap to leave` : `Include ${esc(p)} in the lineup`}">${esc(p)}</button>
+            <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" aria-pressed="${out}" ${here ? '' : 'disabled'}
+              title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
+          </span>
         </div>`;
       })
       .join(''),
@@ -133,6 +141,7 @@ function renderPlayers(live, history) {
 // ---- stats and results by day -------------------------------------------------
 
 function period() {
+  if (statsScope === 'all') return { prefix: '', label: 'All time' };
   const [year, month] = L.localDate().split('-').map(Number);
   if (statsScope === 'month') {
     const index = year * 12 + (month - 1) + statsOffset;
@@ -148,12 +157,19 @@ function period() {
   return { prefix: y, label: y };
 }
 
-const periodDays = () => S.allDays().filter((d) => d.date.startsWith(period().prefix));
+const periodDays = () => {
+  const { prefix } = period();
+  const days = S.allDays();
+  return prefix ? days.filter((d) => d.date.startsWith(prefix)) : days;
+};
 
 function renderStats() {
   document
     .querySelectorAll('#statsSeg button')
     .forEach((b) => b.classList.toggle('on', b.dataset.scope === statsScope));
+  const paging = statsScope !== 'all';
+  $('#prevPeriod').hidden = !paging;
+  $('#nextPeriod').hidden = !paging;
   $('#periodLabel').textContent = period().label;
   const days = periodDays();
 
@@ -207,7 +223,10 @@ function dayGroup(day) {
   );
   const stars = L.starsOf(totals);
   const standings = totals
-    .map((r) => `<span><b>${esc(r.player)}</b>${star(r.player, stars)} ${r.wins}-${r.losses}</span>`)
+    .map((r) => {
+      const emoji = dayMark(r.player, stars, r.played);
+      return `<span class="standing">${markHtml(emoji)}<span class="who"><b>${esc(r.player)}</b> ${r.wins}-${r.losses}</span></span>`;
+    })
     .join('');
   const body = history
     ? `<ol class="results">${history

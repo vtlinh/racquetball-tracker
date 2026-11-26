@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=7" />
+    <link rel="stylesheet" href="css/styles.css?v=8" />
   </head>
   <body>
     <main>
@@ -43,6 +43,7 @@
           <div class="seg" id="statsSeg">
             <button class="btn text" data-scope="month">Month</button>
             <button class="btn text" data-scope="year">Year</button>
+            <button class="btn text" data-scope="all" title="All time">All</button>
           </div>
           <div class="period">
             <button class="btn" id="prevPeriod" title="Previous" data-icon="left"></button>
@@ -99,6 +100,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=7"></script>
+    <script type="module" src="js/app.js?v=8"></script>
   </body>
 </html>

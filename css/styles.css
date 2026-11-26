@@ -308,9 +308,21 @@ main {
 .pchip {
   flex: 0 0 auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 0;
+}
+.pchip-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mark {
+  display: block;
+  height: 15px;
+  font-size: 12px;
+  line-height: 15px;
+  text-align: center;
 }
 .pchip .pname {
   border: 0;
@@ -379,6 +391,7 @@ main {
   font-weight: 700;
   min-width: 72px;
   text-align: center;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
@@ -480,6 +493,14 @@ p.stats.empty {
 .standings b {
   color: var(--text);
   font-weight: 600;
+}
+.standing {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.standing .who {
+  white-space: nowrap;
 }
 .day summary::-webkit-details-marker {
   display: none;
