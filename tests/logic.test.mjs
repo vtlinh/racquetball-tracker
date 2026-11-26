@@ -293,7 +293,7 @@ test('dayRows and aggregate produce the per-day rows and period totals', () => {
   );
 });
 
-test('points: +1/-1 in singles and doubles, +1/-0.5 in triples, sitters unchanged', () => {
+test('points: +1/-1 in singles, +0.5/-0.5 in doubles, +1/-0.5 in triples, sitters unchanged', () => {
   const dbl = L.playerStats([
     {
       sides: [
@@ -305,10 +305,10 @@ test('points: +1/-1 in singles and doubles, +1/-0.5 in triples, sitters unchange
       t: 0,
     },
   ]);
-  assert.equal(dbl.A.score, 1);
-  assert.equal(dbl.B.score, 1);
-  assert.equal(dbl.C.score, -1);
-  assert.equal(dbl.D.score, -1);
+  assert.equal(dbl.A.score, 0.5);
+  assert.equal(dbl.B.score, 0.5);
+  assert.equal(dbl.C.score, -0.5);
+  assert.equal(dbl.D.score, -0.5);
   assert.equal(dbl.E.score, 0);
   assert.equal(dbl.E.played, 0);
 
@@ -348,21 +348,21 @@ test('crown is the unique high score and poop is the unique low score', () => {
     m(['A', 'C'], ['B', 'E'], 0, ['D']),
     m(['A', 'E'], ['C', 'D'], 1, ['B']),
   ];
-  // Scores: A +1, B 0, C +1, D 0, E -2. The high score is tied, so no crown.
+  // Scores: A +0.5, B 0, C +0.5, D 0, E -1. The high score is tied, so no crown.
   assert.deepEqual(L.dayStars(h), { crown: null, poop: 'E' });
-  // Scores: A +2, B -1, C +1, D +1, E -3.
+  // Scores: A +1, B -0.5, C +0.5, D +0.5, E -1.5.
   assert.deepEqual(L.dayStars([...h, m(['A', 'D'], ['B', 'E'], 0, ['C'])]), { crown: 'A', poop: 'E' });
-  // Scores: A +2, B -1, C +1, D -3, E +1.
+  // Scores: A +1, B -0.5, C +0.5, D -1.5, E +0.5.
   const h3 = [
     m(['A', 'B'], ['C', 'D'], 0),
     m(['A', 'C'], ['B', 'D'], 0),
     m(['C', 'E'], ['B', 'D'], 0, ['A']),
   ];
   assert.deepEqual(L.dayStars(h3), { crown: 'A', poop: 'D' });
-  // Scores: A 0, B 0, C 0, D -1, E +1.
+  // Scores: A 0, B 0, C 0, D -0.5, E +0.5.
   const h4 = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['C', 'E'], ['A', 'B'], 0, ['D'])];
   assert.deepEqual(L.dayStars(h4), { crown: 'E', poop: 'D' });
-  // E sat both games. Scores among those who played: A +2, B 0, C 0, D -2.
+  // E sat both games. Scores among those who played: A +1, B 0, C 0, D -1.
   const satAll = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['A', 'C'], ['B', 'D'], 0, ['E'])];
   assert.deepEqual(L.dayStars(satAll), { crown: 'A', poop: 'D' });
   // A record with no games played cannot take a mark, even with a wild win-loss line.
