@@ -733,12 +733,19 @@ $('#mealList').onclick = (e) => {
   const name = e.target.closest('[data-address]');
   if (name) openPlace(name.dataset.address);
 };
-$('#mealForm').onsubmit = (e) => {
+$('#mealForm').onsubmit = async (e) => {
   e.preventDefault();
-  if (readOnly) return;
-  const n = $('#newMeal').value.trim();
-  if (n) S.setRestaurants(L.withRestaurant(S.getState().restaurants, n));
-  $('#newMeal').value = '';
+  if (readOnly || placePicking) return;
+  placeEdit = '';
+  const q = $('#newMeal').value.trim();
+  if (q.length < 2) return;
+  clearTimeout(placeTimer);
+  let place = $('#mealSuggest')._places?.[0];
+  if (!place) {
+    await searchPlaces(q);
+    place = $('#mealSuggest')._places?.[0];
+  }
+  if (place) pickPlace(place);
 };
 $('#removeMealDlg').addEventListener('click', (e) => {
   const d = $('#removeMealDlg');
@@ -827,14 +834,36 @@ function predictionText(value) {
   return text && text !== '[object Object]' ? text : '';
 }
 
+function placeQueryValue() {
+  if ($('#placeDlg').open) return $('#placeQuery').value.trim();
+  return $('#newMeal').value.trim();
+}
+
+function suggestBox() {
+  return $('#placeDlg').open ? $('#placeSuggest') : $('#mealSuggest');
+}
+
+function queuePlaceSearch() {
+  const q = placeQueryValue();
+  const box = suggestBox();
+  clearTimeout(placeTimer);
+  if (q.length < 2) {
+    placeSeq += 1;
+    box.innerHTML = '';
+    box._places = [];
+    return;
+  }
+  placeTimer = setTimeout(() => searchPlaces(q), 300);
+}
+
 function askLocation() {
   if (placeAsked || !navigator.geolocation) return;
   placeAsked = true;
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       placeHere = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      const q = $('#placeQuery').value.trim();
-      if ($('#placeDlg').open && q.length >= 2) searchPlaces(q);
+      const q = placeQueryValue();
+      if (q.length >= 2 && ($('#placeDlg').open || $('#mealDlg').open)) searchPlaces(q);
     },
     () => {},
     { enableHighAccuracy: false, maximumAge: 60000, timeout: 8000 },
@@ -888,7 +917,7 @@ async function resolvePlace(place) {
 async function pickPlace(place) {
   if (placePicking) return;
   placePicking = true;
-  $('#placeSuggest').innerHTML = '<p class="muted">Saving…</p>';
+  suggestBox().innerHTML = '<p class="muted">Saving…</p>';
   try {
     const chosen = await resolvePlace(place);
     if (!chosen.address) {
@@ -896,17 +925,23 @@ async function pickPlace(place) {
       return;
     }
     const list = S.getState().restaurants;
-    const next = placeEdit ? L.updateRestaurantAddress(list, placeEdit, chosen) : L.withRestaurant(list, chosen);
+    const adding = !placeEdit;
+    const next = adding ? L.withRestaurant(list, chosen) : L.updateRestaurantAddress(list, placeEdit, chosen);
     S.setRestaurants(next);
     placeEdit = '';
-    $('#placeDlg').close();
+    if (adding) {
+      $('#newMeal').value = '';
+      $('#mealSuggest').innerHTML = '';
+      $('#mealSuggest')._places = [];
+    }
+    if ($('#placeDlg').open) $('#placeDlg').close();
   } finally {
     placePicking = false;
   }
 }
 
 function renderPlaceSuggestions(places, note) {
-  const box = $('#placeSuggest');
+  const box = suggestBox();
   if (note) {
     box.innerHTML = `<p class="muted">${esc(note)}</p>`;
     box._places = [];
@@ -926,6 +961,7 @@ function renderPlaceSuggestions(places, note) {
     })
     .join('');
   box._places = places;
+  box.querySelector('button')?.scrollIntoView({ block: 'nearest' });
 }
 
 async function searchPlaces(query) {
@@ -967,27 +1003,28 @@ async function searchPlaces(query) {
   }
 }
 
-$('#placeQuery').addEventListener('input', () => {
-  const q = $('#placeQuery').value.trim();
-  clearTimeout(placeTimer);
-  if (q.length < 2) {
-    placeSeq += 1;
-    $('#placeSuggest').innerHTML = '';
-    return;
-  }
-  placeTimer = setTimeout(() => searchPlaces(q), 300);
+$('#newMeal').addEventListener('input', () => {
+  placeEdit = '';
+  queuePlaceSearch();
 });
+$('#newMeal').addEventListener('focus', askLocation);
+$('#placeQuery').addEventListener('input', queuePlaceSearch);
 $('#placeForm').onsubmit = (e) => {
   e.preventDefault();
   const place = $('#placeSuggest')._places?.[0];
   if (place) pickPlace(place);
 };
-$('#placeSuggest').onclick = (e) => {
+function chooseSuggestion(e) {
   const b = e.target.closest('[data-place]');
   if (!b) return;
-  const place = $('#placeSuggest')._places?.[Number(b.dataset.place)];
-  if (place) pickPlace(place);
-};
+  const box = b.closest('.place-suggest');
+  const place = box?._places?.[Number(b.dataset.place)];
+  if (!place) return;
+  if (box.id === 'mealSuggest') placeEdit = '';
+  pickPlace(place);
+}
+$('#placeSuggest').onclick = chooseSuggestion;
+$('#mealSuggest').onclick = chooseSuggestion;
 $('#placeDlg').addEventListener('click', (e) => {
   const d = $('#placeDlg');
   const r = d.getBoundingClientRect();

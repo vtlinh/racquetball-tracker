@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=63" />
+    <link rel="stylesheet" href="css/styles.css?v=64" />
   </head>
   <body>
     <main>
@@ -89,9 +89,10 @@
       <div id="mealWho"></div>
       <div id="mealList" class="roster"></div>
       <form id="mealForm" class="row">
-        <input id="newMeal" placeholder="Add restaurant" autocomplete="off" maxlength="40" />
+        <input id="newMeal" placeholder="Add restaurant" autocomplete="off" maxlength="80" role="combobox" aria-autocomplete="list" aria-controls="mealSuggest" />
         <button class="btn" title="Add" data-icon="plus"></button>
       </form>
+      <div id="mealSuggest" class="place-suggest"></div>
     </dialog>
 
     <dialog id="placeDlg" class="sheet">
@@ -111,6 +112,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=63"></script>
+    <script type="module" src="js/app.js?v=64"></script>
   </body>
 </html>

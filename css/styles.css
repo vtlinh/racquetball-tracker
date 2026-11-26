@@ -811,6 +811,7 @@ dialog.ask .ask-row {
 dialog.sheet {
   width: min(560px, 100vw);
   max-height: 88vh;
+  overflow: auto;
   margin: auto auto 0;
   padding: 12px 14px 20px;
   border: 1px solid var(--line);
