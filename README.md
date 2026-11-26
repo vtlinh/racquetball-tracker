@@ -34,7 +34,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 | ‹ date ›                    | Pick the day results are recorded on.                                                                                                                         |
 | Player name                 | Include that player in the lineup, or leave them out.                                                                                                         |
 | Coffee cup (beside a name)  | Sit that player out, or bring them back. Several players can sit at once.                                                                                     |
-| Month / Year / All, arrows  | Stats for a month, a year, or all time, with that period's results by day. All time has no arrows.                                                            |
+| All / Year / Month, arrows  | Stats for all time, a year, or a month, with that period's results by day. All time has no arrows.                                                            |
 | Settings                    | Roster and the Google Sheet connection.                                                                                                                       |
 
 Played and won for the day are in the results at the bottom.
