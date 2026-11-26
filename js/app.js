@@ -304,7 +304,6 @@ function dayGroup(day) {
     <summary>
       <span class="day-title">${esc(dayName(date))}</span>
       <span class="muted">${matchesText(day.matches)}</span>
-      ${viewing ? '' : `<button class="btn sm" data-act="goDay" data-date="${date}" title="Add results to this day">${icon('pencil')}</button>`}
       <span class="standings">${standings}</span>
     </summary>
     ${body}
@@ -411,10 +410,6 @@ document.addEventListener('click', (e) => {
       S.deleteMatch(date, i);
       toast('Result deleted', true);
       break;
-    case 'goDay':
-      e.preventDefault();
-      goToDay(date);
-      return;
     case 'toastUndo':
       S.undo();
       toast('Undone');
