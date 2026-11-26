@@ -125,13 +125,13 @@ function renderPlayers(live, history) {
         const here = live.present.includes(p);
         const out = !!m?.out.includes(p);
         return `<div class="pchip ${here ? '' : 'away'}">
-          <span class="pname-col">
-            ${markHtml(dayMark(p, stars, stats[p]?.played))}
+          ${markHtml(dayMark(p, stars, stats[p]?.played))}
+          <span class="pchip-line">
             <button class="pname ${here ? 'on' : ''}" data-act="toggle" data-name="${esc(p)}" aria-pressed="${here}"
               title="${here ? `${esc(p)} is in the lineup — tap to leave` : `Include ${esc(p)} in the lineup`}">${esc(p)}</button>
+            <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" aria-pressed="${out}" ${here ? '' : 'disabled'}
+              title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
           </span>
-          <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" aria-pressed="${out}" ${here ? '' : 'disabled'}
-            title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
         </div>`;
       })
       .join(''),
