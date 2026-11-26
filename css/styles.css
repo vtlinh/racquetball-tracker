@@ -246,6 +246,14 @@ main {
   left: 37.5%;
   width: 25%;
 }
+/* The name row owns the bottom of a triple, so the court marks stop above it. */
+.court-floor[data-sides='3'] .court-line {
+  bottom: 38px;
+}
+.court-floor[data-sides='3'] .box-line.c,
+.court-floor[data-sides='3'] .box-line.d {
+  display: none;
+}
 .court-line.receive {
   left: 37.5%;
   width: 0;
@@ -294,6 +302,8 @@ main {
 .teams[data-sides='3'] {
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: 1fr;
+  align-items: end;
+  padding: 0 2px 4px;
 }
 .teams[data-sides='3'] .team {
   grid-row: 1;
