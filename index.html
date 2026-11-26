@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=52" />
+    <link rel="stylesheet" href="css/styles.css?v=53" />
   </head>
   <body>
     <main>
@@ -69,6 +69,8 @@
         <strong>Restaurants</strong>
         <button class="btn" data-close title="Close" data-icon="x"></button>
       </header>
+      <p class="meal-hint">5 is picked most often. A name with no weight counts as the average.</p>
+      <div id="mealWho"></div>
       <div id="mealList" class="roster"></div>
       <form id="mealForm" class="row">
         <input id="newMeal" placeholder="Add restaurant" autocomplete="off" maxlength="40" />
@@ -82,6 +84,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=52"></script>
+    <script type="module" src="js/app.js?v=53"></script>
   </body>
 </html>

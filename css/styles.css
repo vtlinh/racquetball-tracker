@@ -197,6 +197,10 @@ main {
   padding: 0;
   flex: none;
 }
+.meal .btn .ic {
+  width: 16px;
+  height: 16px;
+}
 /* ---- match card: a racquetball court, front wall on the right ---- */
 .match {
   background: var(--teal);
@@ -804,6 +808,74 @@ dialog::backdrop {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+.meal-hint,
+.meal-taken {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.meal-who {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.meal-who select,
+.meal-item select {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0 8px;
+  font: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+#mealList.roster {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+.meal-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.meal-item-head,
+.meal-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.meal-item .meal-name,
+.meal-pick .who {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meal-pick {
+  padding-left: 8px;
+}
+.meal-pick.mine .who {
+  color: var(--gold);
+}
+.meal-fixed {
+  width: 58px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
 }
 .roster .x {
   display: grid;

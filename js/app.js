@@ -25,6 +25,20 @@ const markHtml = (emoji) =>
 const STATS_SCOPE_KEY = 'rb.statsScope';
 const STATS_SCOPES = ['all', 'year', 'month'];
 const READ_KEY = 'rb.readOnly';
+const DEVICE_KEY = 'rb.device';
+
+function deviceId() {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = crypto.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    return '';
+  }
+}
 
 function loadStatsScope() {
   try {
@@ -431,21 +445,80 @@ function dayGroup(day) {
   </details>`;
 }
 
+function weightOptions(selected, average) {
+  const blank = average ? `<option value=""${selected == null ? ' selected' : ''}>Avg</option>` : '';
+  return (
+    blank +
+    L.MEAL_WEIGHTS.map((w) => `<option value="${w}"${w === selected ? ' selected' : ''}>${w}</option>`).join('')
+  );
+}
+
 function renderMeal() {
   const date = S.getViewDate();
-  const name = L.restaurantFor(date, S.getState().restaurants, S.gameDates());
+  const state = S.getState();
+  const name = L.restaurantFor(date, state.restaurants, S.gameDates(), state.mealPicks);
   $('#mealText').textContent = name ? `Eating at ${name}` : 'No restaurant yet';
-  if ($('#mealDlg').open) renderMealList();
+  if ($('#mealDlg').open) {
+    renderMealWho();
+    renderMealList();
+  }
+}
+
+function renderMealWho() {
+  const state = S.getState();
+  const id = deviceId();
+  const claims = L.cleanClaims(state.claims);
+  const mine = S.myName(id);
+  const taken = Object.keys(claims).filter((name) => claims[name] !== id);
+  const options = [`<option value="">${mine ? 'Remove claim' : 'Claim a name'}</option>`];
+  for (const name of state.roster || []) {
+    if (taken.some((t) => t.toLocaleLowerCase() === name.toLocaleLowerCase())) continue;
+    const selected = mine.toLocaleLowerCase() === name.toLocaleLowerCase() ? ' selected' : '';
+    options.push(`<option value="${esc(name)}"${selected}>${esc(name)}</option>`);
+  }
+  const takenLine = taken.length
+    ? `<p class="meal-taken">Claimed on another browser: ${taken.map(esc).join(', ')}</p>`
+    : '';
+  put(
+    $('#mealWho'),
+    `<label class="meal-who">This browser<select data-claim${readOnly ? ' disabled' : ''}>${options.join('')}</select></label>${takenLine}`,
+  );
 }
 
 function renderMealList() {
-  const list = S.getState().restaurants || [];
+  const state = S.getState();
+  const list = L.rankedRestaurants(state.restaurants, state.mealPicks);
+  const picks = L.cleanMealPicks(state.mealPicks, list);
+  const mine = S.myName(deviceId());
+  const mineKey = Object.keys(picks).find((person) => person.toLocaleLowerCase() === mine.toLocaleLowerCase()) || mine;
   $('#mealList').innerHTML = list.length
     ? list
-        .map(
-          (p) =>
-            `<span class="pill">${esc(p)}<button class="x" data-remove-meal="${esc(p)}" title="Remove ${esc(p)}">${icon('x')}</button></span>`,
-        )
+        .map((r) => {
+          const name = esc(r.name);
+          const others = Object.keys(picks)
+            .filter((person) => person.toLocaleLowerCase() !== mine.toLocaleLowerCase() && picks[person][r.name])
+            .sort((a, b) => a.localeCompare(b));
+          const mineRow = mine
+            ? `<div class="meal-pick mine">
+                <span class="who">${esc(mine)}</span>
+                <select data-my-weight="${name}" aria-label="${esc(mine)}'s weight for ${name}" title="Your weight. Avg counts as the average"${readOnly ? ' disabled' : ''}>${weightOptions(picks[mineKey]?.[r.name] ?? null, true)}</select>
+              </div>`
+            : '';
+          const otherRows = others
+            .map(
+              (person) =>
+                `<div class="meal-pick"><span class="who">${esc(person)}</span><span class="meal-fixed">${picks[person][r.name]}</span></div>`,
+            )
+            .join('');
+          return `<div class="meal-item">
+            <div class="meal-item-head">
+              <span class="meal-name">${name}</span>
+              <select data-meal-weight="${name}" aria-label="List weight for ${name}" title="List weight, 5 is picked most often"${readOnly ? ' disabled' : ''}>${weightOptions(r.weight, false)}</select>
+              <button class="x" data-remove-meal="${name}" title="Remove ${name}">${icon('x')}</button>
+            </div>
+            ${mineRow}${otherRows}
+          </div>`;
+        })
         .join('')
     : '<span class="muted">None yet</span>';
 }
@@ -623,8 +696,8 @@ $('#readBtn').onclick = () => {
 
 $('#mealBtn').onclick = () => {
   if (readOnly) return;
-  renderMealList();
   $('#mealDlg').showModal();
+  renderMeal();
 };
 $('#mealDlg').addEventListener('click', (e) => {
   const d = $('#mealDlg');
@@ -636,13 +709,38 @@ $('#mealList').onclick = (e) => {
   if (readOnly) return;
   const b = e.target.closest('[data-remove-meal]');
   if (!b) return;
-  S.setRestaurants((S.getState().restaurants || []).filter((n) => n !== b.dataset.removeMeal));
+  S.setRestaurants(L.cleanRestaurants(S.getState().restaurants).filter((r) => r.name !== b.dataset.removeMeal));
 };
+$('#mealWho').addEventListener('change', (e) => {
+  if (readOnly) return;
+  const sel = e.target.closest('select[data-claim]');
+  if (!sel) return;
+  const id = deviceId();
+  if (!sel.value) S.releaseClaim(id);
+  else if (!S.claimName(sel.value, id)) toast('That name is already claimed');
+});
+$('#mealList').addEventListener('change', (e) => {
+  if (readOnly) return;
+  const mine = e.target.closest('select[data-my-weight]');
+  if (mine) {
+    const who = S.myName(deviceId());
+    if (!who) return;
+    S.setMealPick(who, mine.dataset.myWeight, mine.value === '' ? null : Number(mine.value));
+    return;
+  }
+  const sel = e.target.closest('select[data-meal-weight]');
+  if (!sel) return;
+  const name = sel.dataset.mealWeight;
+  const weight = Number(sel.value);
+  S.setRestaurants(
+    L.cleanRestaurants(S.getState().restaurants).map((r) => (r.name === name ? { ...r, weight } : r)),
+  );
+});
 $('#mealForm').onsubmit = (e) => {
   e.preventDefault();
   if (readOnly) return;
   const n = $('#newMeal').value.trim();
-  if (n) S.setRestaurants([...(S.getState().restaurants || []), n]);
+  if (n) S.setRestaurants([...L.cleanRestaurants(S.getState().restaurants), { name: n, weight: 1 }]);
   $('#newMeal').value = '';
 };
 
