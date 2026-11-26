@@ -446,7 +446,8 @@ function dayGroup(day) {
 }
 
 function weightOptions(selected, average) {
-  const blank = average ? `<option value=""${selected == null ? ' selected' : ''}>Avg</option>` : '';
+  const blank =
+    average == null ? '' : `<option value=""${selected == null ? ' selected' : ''}>${L.formatWeight(average)}</option>`;
   return (
     blank +
     L.MEAL_WEIGHTS.map((w) => `<option value="${w}"${w === selected ? ' selected' : ''}>${w}</option>`).join('')
@@ -495,28 +496,15 @@ function renderMealList() {
     ? list
         .map((r) => {
           const name = esc(r.name);
-          const others = Object.keys(picks)
-            .filter((person) => person.toLocaleLowerCase() !== mine.toLocaleLowerCase() && picks[person][r.name])
-            .sort((a, b) => a.localeCompare(b));
-          const mineRow = mine
-            ? `<div class="meal-pick mine">
-                <span class="who">${esc(mine)}</span>
-                <select data-my-weight="${name}" aria-label="${esc(mine)}'s weight for ${name}" title="Your weight. Avg counts as the average"${readOnly ? ' disabled' : ''}>${weightOptions(picks[mineKey]?.[r.name] ?? null, true)}</select>
-              </div>`
-            : '';
-          const otherRows = others
-            .map(
-              (person) =>
-                `<div class="meal-pick"><span class="who">${esc(person)}</span><span class="meal-fixed">${picks[person][r.name]}</span></div>`,
-            )
-            .join('');
+          const avg = L.restaurantWeight(r, picks);
+          const minePick = mine ? (picks[mineKey]?.[r.name] ?? null) : null;
+          const select = mine
+            ? `<select data-my-weight="${name}" aria-label="Your weight for ${name}" title="Your weight. The average is used when you have not picked"${readOnly ? ' disabled' : ''}>${weightOptions(minePick, avg)}</select>`
+            : `<select data-meal-weight="${name}" aria-label="Weight for ${name}" title="List weight, 5 is picked most often"${readOnly ? ' disabled' : ''}>${weightOptions(r.weight)}</select>`;
           return `<div class="meal-item">
-            <div class="meal-item-head">
-              <span class="meal-name">${name}</span>
-              <select data-meal-weight="${name}" aria-label="List weight for ${name}" title="List weight, 5 is picked most often"${readOnly ? ' disabled' : ''}>${weightOptions(r.weight, false)}</select>
-              <button class="x" data-remove-meal="${name}" title="Remove ${name}">${icon('x')}</button>
-            </div>
-            ${mineRow}${otherRows}
+            <span class="meal-name"><span class="meal-label">${name}</span> <span class="meal-avg">(${L.formatWeight(avg)})</span></span>
+            ${select}
+            <button class="x" data-remove-meal="${name}" title="Remove ${name}">${icon('x')}</button>
           </div>`;
         })
         .join('')

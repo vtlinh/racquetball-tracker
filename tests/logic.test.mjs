@@ -132,6 +132,15 @@ test('personal weights average, and a name that did not pick counts as that aver
   });
 });
 
+test('the shown weight is the average, or the list weight when nobody picked', () => {
+  const pho = { name: 'Pho', weight: 1 };
+  assert.equal(L.restaurantWeight(pho, {}), 1);
+  assert.equal(L.restaurantWeight(pho, { Linh: { Pho: 5 } }), 5);
+  assert.equal(L.restaurantWeight(pho, { Linh: { Pho: 5 }, Rick: { Pho: 1 } }), 3);
+  assert.equal(L.formatWeight(3), '3');
+  assert.equal(L.formatWeight(10 / 3), '3.3');
+});
+
 test('restaurants are ordered by weight, then by name', () => {
   assert.deepEqual(
     L.rankedRestaurants([
