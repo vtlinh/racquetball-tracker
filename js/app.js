@@ -778,8 +778,6 @@ $('#mealList').addEventListener('change', (e) => {
   }
 });
 let placeEdit = '';
-let placeHere = null;
-let placeAsked = false;
 let placeTimer = 0;
 let placeSeq = 0;
 let placeToken = null;
@@ -856,20 +854,6 @@ function queuePlaceSearch() {
   placeTimer = setTimeout(() => searchPlaces(q), 300);
 }
 
-function askLocation() {
-  if (placeAsked || !navigator.geolocation) return;
-  placeAsked = true;
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      placeHere = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      const q = placeQueryValue();
-      if (q.length >= 2 && ($('#placeDlg').open || $('#mealDlg').open)) searchPlaces(q);
-    },
-    () => {},
-    { enableHighAccuracy: false, maximumAge: 60000, timeout: 8000 },
-  );
-}
-
 function openPlace(name) {
   if (readOnly) return;
   placeEdit = name || '';
@@ -879,7 +863,6 @@ function openPlace(name) {
   $('#placeQuery').value = placeEdit;
   $('#placeSuggest').innerHTML = '';
   $('#placeDlg').showModal();
-  askLocation();
   setTimeout(() => {
     if ($('#placeDlg').open) $('#placeQuery').focus();
   }, 0);
@@ -954,7 +937,7 @@ function renderPlaceSuggestions(places, note) {
   }
   box.innerHTML = places
     .map((place, i) => {
-      const where = [placeHere ? L.formatMiles(place.km) : '', place.address].filter(Boolean).join(' · ');
+      const where = [L.formatMiles(place.km), place.address].filter(Boolean).join(' · ');
       return `<button type="button" data-place="${i}"><span class="place-name">${esc(place.name)}</span>${
         where ? `<span class="place-addr">${esc(where)}</span>` : ''
       }</button>`;
@@ -966,7 +949,7 @@ function renderPlaceSuggestions(places, note) {
 
 async function searchPlaces(query) {
   const seq = ++placeSeq;
-  const here = placeHere;
+  const here = L.GYM;
   try {
     const placesLib = await loadPlacesLibrary();
     if (seq !== placeSeq) return;
@@ -979,10 +962,8 @@ async function searchPlaces(query) {
       language: 'en',
       region: 'us',
     };
-    if (here) {
-      request.origin = here;
-      request.locationBias = { center: here, radius: 50000 };
-    }
+    request.origin = here;
+    request.locationBias = { center: here, radius: 50000 };
     const { suggestions } = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
     if (seq !== placeSeq) return;
     const predictions = (suggestions || []).map((s) => s.placePrediction).filter(Boolean);
@@ -1007,7 +988,6 @@ $('#newMeal').addEventListener('input', () => {
   placeEdit = '';
   queuePlaceSearch();
 });
-$('#newMeal').addEventListener('focus', askLocation);
 $('#placeQuery').addEventListener('input', queuePlaceSearch);
 $('#placeForm').onsubmit = (e) => {
   e.preventDefault();
