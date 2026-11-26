@@ -4,7 +4,7 @@ import { DEFAULT_API_URL } from './config.js';
 const STATE_KEY = 'rb.state.v1';
 const UNDO_LIMIT = 100;
 
-const blankLive = () => ({ present: [], match: null });
+const blankLive = () => ({ present: [], match: null, day: null });
 
 /** The built-in sheet. Tests point `?api=` at a stand-in before this module loads. */
 function sheetUrl() {
@@ -26,7 +26,7 @@ let sync = { status: API_URL ? 'idle' : 'local', error: '' };
 
 /**
  * state.log    { 'YYYY-MM-DD': [{ sides, out, win, t }] } — every result, by day
- * state.live   { present, match } — who is here and the lineup on court
+ * state.live   { present, match, day } — who is here, the lineup, and the Eastern Time date it was dealt for
  * state.undo   [{ date, history, match }] — result changes only
  * state.redo   same shape — results put back after an undo, cleared by a new result
  * state.legacy stamped Days rows that have no match log (v1 data, other devices' unsynced days)
@@ -49,7 +49,7 @@ function blank() {
 function fromV1(session) {
   const log = {};
   if (session?.history?.length) log[session.date] = session.history;
-  return { live: { present: session?.present || [], match: session?.match || null }, log };
+  return { live: { present: session?.present || [], match: session?.match || null, day: null }, log };
 }
 
 function loadLocal() {
@@ -129,6 +129,7 @@ function restoredLive(entry) {
   return {
     present: [...new Set([...state.live.present, ...L.onCourt(entry.match), ...entry.match.out])],
     match: entry.match,
+    day: state.live.day,
   };
 }
 
@@ -229,7 +230,7 @@ export function deleteDays(dates) {
 export function togglePlayer(name) {
   const s = session();
   const next = L.setPresent(s, name, !s.present.includes(name));
-  if (next !== s) commit({ live: { present: next.present, match: next.match } });
+  if (next !== s) commit({ live: { present: next.present, match: next.match, day: L.localDate() } });
 }
 
 function withMatch(match) {
@@ -242,6 +243,19 @@ export const swap = (a, b) => withMatch(L.swapPlayers(state.live.match, a, b, da
 export const bench = (name) => withMatch(L.benchPlayer(state.live.match, name, dayHistory()));
 export const unbench = (name) => withMatch(L.unbenchPlayer(state.live.match, name, dayHistory()));
 export const reshuffle = () => withMatch(L.reshuffle(state.live.match, dayHistory()));
+
+/** A later Eastern Time date deals the same players again, without yesterday's pairs. */
+export function rollDay(today = L.localDate(), rng = Math.random) {
+  const live = state.live;
+  if (live.day === today || (live.day && live.day > today)) return false;
+  if (live.day && live.day < today && live.present.length >= 2 && live.match) {
+    const match = L.planMatch(live.present, state.log[today] || [], rng);
+    commit({ live: { present: [...live.present], match, day: today } });
+    return true;
+  }
+  commit({ live: { ...live, day: today } }, { remoteState: false });
+  return false;
+}
 
 // ---- stats ------------------------------------------------------------------
 

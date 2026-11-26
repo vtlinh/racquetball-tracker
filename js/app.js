@@ -669,6 +669,14 @@ function rallyBall() {
 
 hydrateIcons();
 S.subscribe(render);
+const watchDay = () => {
+  if (S.rollDay()) toast('New day, teams reshuffled');
+};
+watchDay();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') watchDay();
+});
+setInterval(watchDay, 60_000);
 render();
 S.pull();
 rallyBall();

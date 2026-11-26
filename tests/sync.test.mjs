@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadAppsScript } from './fake-apps-script.mjs';
+import * as L from '../js/logic.js';
 
 const API = 'https://script.google.com/macros/s/fake/exec';
 const backend = loadAppsScript();
@@ -186,6 +187,10 @@ test('data saved by the previous version moves into the per-day log', async () =
   const st = S1.getState();
   assert.deepEqual(st.log, { '2026-10-05': history });
   assert.deepEqual(st.live.present, ['A', 'B', 'C', 'D']);
+  assert.equal(st.live.day, null);
+  assert.equal(S1.rollDay('2026-11-26'), false, 'a saved lineup with no day is dated without a reshuffle');
+  assert.equal(S1.getState().live.day, '2026-11-26');
+  assert.equal(S1.getState().live.match, null);
   assert.deepEqual(st.undo, []);
   assert.deepEqual(
     S1.allDays().map((d) => [d.date, d.matches]),
@@ -196,4 +201,31 @@ test('data saved by the previous version moves into the per-day log', async () =
   );
   await S1.flush();
   assert.equal(matchRows('2026-10-05').length, 1, 'the unstamped v1 day is written to the sheet');
+});
+
+test('a new Eastern Time day deals the same players a fresh lineup', () => {
+  const names = ['Rick', 'Leo', 'Linh', 'Nate'];
+  for (const p of [...S.getState().live.present]) {
+    if (!names.includes(p)) S.togglePlayer(p);
+  }
+  for (const p of names) {
+    if (!S.getState().live.present.includes(p)) S.togglePlayer(p);
+  }
+  if (!S.dayHistory().length) S.win(0);
+  assert.equal(S.getState().live.day, L.localDate());
+  const present = [...S.getState().live.present];
+  let seed = 9;
+  const rng = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 2 ** 32;
+  };
+  const fresh = L.planMatch(present, [], rng);
+  seed = 9;
+  assert.equal(S.rollDay('2099-04-02', rng), true);
+  assert.equal(S.getState().live.day, '2099-04-02');
+  assert.deepEqual([...S.getState().live.present], present);
+  assert.deepEqual(S.getState().live.match.sides, fresh.sides);
+  assert.deepEqual(S.getState().live.match.out, fresh.out);
+  assert.equal(S.dayHistory().length > 0, true, "today's results stay put");
+  assert.equal(S.rollDay('2099-04-02'), false);
 });
