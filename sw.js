@@ -1,4 +1,4 @@
-const CACHE = 'lineup-v4';
+const CACHE = 'lineup-v5';
 const SHELL = [
   './',
   'index.html',
@@ -33,16 +33,19 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Network-first for the app shell so deploys show up immediately; cache is the offline fallback.
+// Revalidate the shell on every load. GitHub Pages keeps files for 10 minutes, and a
+// new page with the previous script never finishes drawing. The cache is only the offline fallback.
 // Cross-origin requests (the Google Apps Script API) are never intercepted.
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy).catch(() => {}));
+        }
         return res;
       })
       .catch(() => caches.match(e.request, { ignoreSearch: true })),
