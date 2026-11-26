@@ -235,6 +235,13 @@ test('a restaurant keeps the address picked for it, and maps opens there', () =>
   assert.equal(google[0].placeId, 'a');
   assert.equal(google[0].km, 2.1);
   assert.equal(L.formatMiles(google[0].km), '1.3 mi');
+  assert.equal(L.placeCity('799 Abbott Blvd, Fort Lee, NJ 07024, USA'), 'Fort Lee');
+  assert.equal(L.placeCity('163 Old River Road, Edgewater, New Jersey'), 'Edgewater');
+  assert.equal(L.placeCity('Abbott Boulevard, Fort Lee, NJ, USA'), 'Fort Lee');
+  assert.equal(L.placeCity('10 Main Street, Springfield'), 'Springfield');
+  assert.equal(L.placeCity('123 Broadway, New York, NY 10001, USA'), 'New York');
+  assert.equal(L.placeCity(''), '');
+  assert.equal(L.placeCity('Obaltan'), '');
   assert.equal(google[1].km, undefined);
 });
 

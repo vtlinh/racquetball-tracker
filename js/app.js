@@ -467,7 +467,8 @@ function renderMeal() {
   const name = L.restaurantFor(date, state.restaurants, S.gameDates(), state.mealPicks);
   const place = L.cleanRestaurants(state.restaurants).find((r) => !r.removed && r.name === name);
   const url = place ? L.mapsUrl(place, mapsPlatform()) : '';
-  const text = name ? `Eating at ${esc(name)}` : 'No restaurant yet';
+  const city = place ? L.placeCity(place.address) : '';
+  const text = name ? `Eating at ${esc(name)}${city ? ` (${esc(city)})` : ''}` : 'No restaurant yet';
   put(
     $('#mealText'),
     url ? `<a class="meal-link" href="${esc(url)}" title="${esc(place.address || name)}">${text}</a>` : text,
