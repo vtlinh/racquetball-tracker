@@ -117,7 +117,10 @@ function renderCourt(live) {
         <button class="win" data-act="win" data-side="${i}" title="${label}" aria-label="${label}">${icon('trophy')}</button>
       </div>`;
   });
-  const ball = m.sides.length === 2 ? '<span class="ball" aria-hidden="true"></span>' : '';
+  const ball =
+    m.sides.length === 2
+      ? '<span class="ball-trail a"></span><span class="ball-trail b"></span><span class="ball-trail c"></span><span class="ball" aria-hidden="true"></span>'
+      : '';
   put(
     el,
     `<div class="court-floor" data-sides="${m.sides.length}">
@@ -503,10 +506,109 @@ $('#addPlayerForm').onsubmit = (e) => {
   $('#newPlayer').value = '';
 };
 
+/** The ball rebounds off the four walls. The front wall is the right edge. */
+function rallyBall() {
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const trailLag = [4, 9, 15];
+  const samples = [];
+  let state = null;
+  let last = 0;
+  const place = (el, x, y) => {
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+  };
+  const tick = (now) => {
+    requestAnimationFrame(tick);
+    const ball = document.querySelector('.court-floor .ball');
+    if (!ball) {
+      state = null;
+      samples.length = 0;
+      return;
+    }
+    const floor = ball.parentElement;
+    const trails = [...floor.querySelectorAll('.ball-trail')];
+    const maxX = Math.max(0, floor.clientWidth - ball.offsetWidth);
+    const maxY = Math.max(0, floor.clientHeight - ball.offsetHeight);
+    if (reduce) {
+      place(ball, maxX * 0.5, maxY * 0.45);
+      ball.style.transform = 'none';
+      trails.forEach((t) => (t.hidden = true));
+      return;
+    }
+    if (!state) {
+      state = {
+        x: maxX * 0.2,
+        y: maxY * 0.22,
+        vx: floor.clientWidth * 0.72,
+        vy: floor.clientHeight * 1.25,
+        squash: 0,
+        wall: 'right',
+      };
+      last = now;
+    }
+    const dt = Math.min(0.04, last ? (now - last) / 1000 : 0);
+    last = now;
+    const steps = Math.max(1, Math.ceil(dt / 0.008));
+    const h = dt / steps;
+    for (let i = 0; i < steps; i++) {
+      state.x += state.vx * h;
+      state.y += state.vy * h;
+      if (state.x <= 0) {
+        state.x = -state.x;
+        state.vx = Math.abs(state.vx);
+        state.squash = 1;
+        state.wall = 'left';
+      } else if (state.x >= maxX) {
+        state.x = maxX - (state.x - maxX);
+        state.vx = -Math.abs(state.vx);
+        state.squash = 1;
+        state.wall = 'right';
+      }
+      if (state.y <= 0) {
+        state.y = -state.y;
+        state.vy = Math.abs(state.vy);
+        state.squash = 1;
+        state.wall = 'top';
+      } else if (state.y >= maxY) {
+        state.y = maxY - (state.y - maxY);
+        state.vy = -Math.abs(state.vy);
+        state.squash = 1;
+        state.wall = 'bottom';
+      }
+    }
+    state.x = Math.min(maxX, Math.max(0, state.x));
+    state.y = Math.min(maxY, Math.max(0, state.y));
+    state.squash *= Math.exp(-dt * 18);
+    const k = state.squash;
+    const flat = 1 - 0.38 * k;
+    const bulge = 1 + 0.16 * k;
+    const sideways = state.wall === 'left' || state.wall === 'right';
+    ball.style.transformOrigin =
+      state.wall === 'left'
+        ? '0% 50%'
+        : state.wall === 'right'
+          ? '100% 50%'
+          : state.wall === 'top'
+            ? '50% 0%'
+            : '50% 100%';
+    ball.style.transform = `scale(${(sideways ? flat : bulge).toFixed(3)}, ${(sideways ? bulge : flat).toFixed(3)})`;
+    place(ball, state.x, state.y);
+    samples.push({ x: state.x, y: state.y });
+    if (samples.length > 20) samples.shift();
+    trails.forEach((t, i) => {
+      const s = samples[samples.length - 1 - trailLag[i]];
+      t.hidden = !s;
+      if (s) place(t, s.x, s.y);
+    });
+  };
+  requestAnimationFrame(tick);
+}
+
 hydrateIcons();
 S.subscribe(render);
 render();
 S.pull();
+rallyBall();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js');
