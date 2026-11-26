@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#131b1e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Racquetball Tracker" />
+    <title>Racquetball Tracker</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="css/styles.css?v=66" />
+  </head>
+  <body>
+    <main>
+      <header class="top">
+        <div class="day-nav">
+          <button class="btn" id="prevDay" title="Previous day with results" data-icon="left"></button>
+          <div class="day-label" id="dayLabel">
+            <span id="dayText"></span>
+            <input type="date" id="dayPick" aria-label="Pick a day" />
+          </div>
+          <button class="btn" id="nextDay" title="Next day, or today" data-icon="right"></button>
+        </div>
+        <nav class="actions" aria-label="Actions">
+          <button class="btn" id="undoBtn" title="Undo last result change" data-icon="undo"></button>
+          <button class="btn" id="redoBtn" title="Redo" data-icon="redo" hidden></button>
+          <button class="btn" id="shuffleBtn" title="Reshuffle teams" data-icon="shuffle"></button>
+          <button class="btn" id="readBtn" title="Read only" aria-pressed="false" data-icon="eye"></button>
+        </nav>
+      </header>
+
+      <section id="court" class="match"></section>
+      <div id="outRow" class="out-row"></div>
+
+      <section class="players" id="players" aria-label="Players"></section>
+
+      <div class="meal">
+        <p id="mealText" class="meal-text">No restaurant yet</p>
+        <button class="btn" id="mealBtn" title="Edit restaurants" data-icon="utensils"></button>
+      </div>
+
+      <section class="stats-sec" aria-label="Stats">
+        <div class="stats-bar">
+          <div class="seg" id="statsSeg">
+            <button class="btn text" data-scope="all" title="All time">All</button>
+            <button class="btn text" data-scope="year">Year</button>
+            <button class="btn text" data-scope="month">Month</button>
+          </div>
+          <div class="period">
+            <button class="btn" id="prevPeriod" title="Previous" data-icon="left"></button>
+            <span id="periodLabel"></span>
+            <button class="btn" id="nextPeriod" title="Next" data-icon="right"></button>
+          </div>
+        </div>
+        <div id="statsBody"></div>
+        <p class="note" id="statsNote"></p>
+        <div id="daysList" class="days"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" hidden></div>
+
+    <dialog id="readDlg" class="ask">
+      <p>Exit read-only mode?</p>
+      <div class="ask-row">
+        <button type="button" class="btn text" data-read="no">No</button>
+        <button type="button" class="btn text" data-read="yes">Yes</button>
+      </div>
+    </dialog>
+
+    <dialog id="removeMealDlg" class="ask">
+      <p class="ask-q">Remove <strong id="removeMealName"></strong>?</p>
+      <div class="ask-row">
+        <button type="button" class="btn text" data-remove="no">No</button>
+        <button type="button" class="btn text" data-remove="yes">Yes</button>
+      </div>
+    </dialog>
+
+    <dialog id="mealDlg" class="sheet">
+      <header class="sheet-head">
+        <strong>Restaurants</strong>
+        <button class="btn" data-close title="Close" data-icon="x"></button>
+      </header>
+      <p class="meal-hint">Score 5 is highest and picked most often.</p>
+      <div id="mealWho"></div>
+      <div id="mealList" class="roster"></div>
+      <form id="mealForm" class="row">
+        <input id="newMeal" placeholder="Add restaurant" autocomplete="off" maxlength="80" role="combobox" aria-autocomplete="list" aria-controls="mealSuggest" />
+        <button class="btn" title="Add" data-icon="plus"></button>
+      </form>
+      <div id="mealSuggest" class="place-suggest"></div>
+    </dialog>
+
+    <dialog id="placeDlg" class="sheet">
+      <header class="sheet-head">
+        <strong id="placeTitle">Add restaurant</strong>
+        <button class="btn" data-close-place title="Close" data-icon="x"></button>
+      </header>
+      <form id="placeForm">
+        <input id="placeQuery" placeholder="Search restaurants" autocomplete="off" maxlength="80" role="combobox" aria-autocomplete="list" aria-controls="placeSuggest" />
+      </form>
+      <div id="placeSuggest" class="place-suggest"></div>
+    </dialog>
+
+    <script>
+      // When a new service worker takes over, reload so the page and its script stay in step.
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+      }
+    </script>
+    <script type="module" src="js/app.js?v=66"></script>
+  </body>
+</html>
