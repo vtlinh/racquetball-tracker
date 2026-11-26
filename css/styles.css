@@ -308,14 +308,14 @@ main {
 .pchip {
   flex: 0 0 auto;
   display: flex;
-  align-items: flex-end;
-  gap: 4px;
-}
-.pname-col {
-  display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+}
+.pchip-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 .pchip .mark {
   display: flex;
