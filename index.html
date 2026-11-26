@@ -7,12 +7,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="2v2 Lineup" />
-    <title>2v2 Lineup</title>
+    <meta name="apple-mobile-web-app-title" content="Racquetball Tracker" />
+    <title>Racquetball Tracker</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=56" />
+    <link rel="stylesheet" href="css/styles.css?v=57" />
   </head>
   <body>
     <main>
@@ -64,12 +64,20 @@
 
     <div id="toast" class="toast" role="status" hidden></div>
 
+    <dialog id="readDlg" class="ask">
+      <p>Exit read-only mode?</p>
+      <div class="ask-row">
+        <button type="button" class="btn text" data-read="no">No</button>
+        <button type="button" class="btn text" data-read="yes">Yes</button>
+      </div>
+    </dialog>
+
     <dialog id="mealDlg" class="sheet">
       <header class="sheet-head">
         <strong>Restaurants</strong>
         <button class="btn" data-close title="Close" data-icon="x"></button>
       </header>
-      <p class="meal-hint">5 is picked most often. The number in parentheses is the average.</p>
+      <p class="meal-hint">Score 5 is highest and picked most often.</p>
       <div id="mealWho"></div>
       <div id="mealList" class="roster"></div>
       <form id="mealForm" class="row">
@@ -84,6 +92,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=56"></script>
+    <script type="module" src="js/app.js?v=57"></script>
   </body>
 </html>

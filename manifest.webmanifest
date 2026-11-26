@@ -1,6 +1,6 @@
 {
-  "name": "2v2 Lineup",
-  "short_name": "2v2 Lineup",
+  "name": "Racquetball Tracker",
+  "short_name": "Racquetball Tracker",
   "description": "Random fair lineups for 2v2 racquetball with daily, monthly and yearly stats.",
   "start_url": "./",
   "scope": "./",

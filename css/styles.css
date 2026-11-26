@@ -76,7 +76,7 @@ button:disabled {
 .small {
   font-size: 13px;
 }
-[hidden] {
+[hidden]:not(option) {
   display: none !important;
 }
 
@@ -779,6 +779,25 @@ p.stats.empty {
   color: #fff;
 }
 
+dialog.ask {
+  width: min(320px, calc(100vw - 32px));
+  margin: auto;
+  padding: 18px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+}
+dialog.ask p {
+  margin: 0 0 16px;
+  font-weight: 700;
+  text-align: center;
+}
+dialog.ask .ask-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 dialog.sheet {
   width: min(560px, 100vw);
   max-height: 88vh;
@@ -835,6 +854,9 @@ dialog::backdrop {
   font: inherit;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+.meal-item select:disabled {
+  opacity: 0.45;
 }
 #mealList.roster {
   flex-direction: column;
