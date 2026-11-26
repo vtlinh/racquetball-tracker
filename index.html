@@ -12,18 +12,18 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=17" />
+    <link rel="stylesheet" href="css/styles.css?v=18" />
   </head>
   <body>
     <main>
       <header class="top">
         <div class="day-nav">
-          <button class="btn" id="prevDay" title="Previous day" data-icon="left"></button>
+          <button class="btn" id="prevDay" title="Previous day with results" data-icon="left"></button>
           <div class="day-label" id="dayLabel">
             <span id="dayText"></span>
             <input type="date" id="dayPick" aria-label="Pick a day" />
           </div>
-          <button class="btn" id="nextDay" title="Next day" data-icon="right"></button>
+          <button class="btn" id="nextDay" title="Next day with results" data-icon="right"></button>
         </div>
         <nav class="actions" aria-label="Actions">
           <button class="btn" id="undoBtn" title="Undo last result change" data-icon="undo"></button>
@@ -78,6 +78,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=17"></script>
+    <script type="module" src="js/app.js?v=18"></script>
   </body>
 </html>

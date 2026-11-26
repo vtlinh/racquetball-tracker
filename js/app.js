@@ -20,10 +20,27 @@ const matchesText = (n) => `${n} match${n === 1 ? '' : 'es'}`;
 const dayMark = (name, stars, played) =>
   !(played >= 1) ? '' : name === stars.crown ? '👑' : name === stars.poop ? '💩' : '';
 const markHtml = (emoji) =>
-  `<span class="mark"${emoji === '👑' ? ' title="Most wins"' : emoji === '💩' ? ' title="Most losses"' : ''}>${emoji}</span>`;
+  `<span class="mark"${emoji === '👑' ? ' title="Most points"' : emoji === '💩' ? ' title="Fewest points"' : ''}>${emoji}</span>`;
+
+const STATS_SCOPE_KEY = 'rb.statsScope';
+const STATS_SCOPES = ['all', 'year', 'month'];
+
+function loadStatsScope() {
+  try {
+    const saved = localStorage.getItem(STATS_SCOPE_KEY);
+    if (STATS_SCOPES.includes(saved)) return saved;
+  } catch {}
+  return 'all';
+}
+
+function rememberStatsScope(scope) {
+  try {
+    localStorage.setItem(STATS_SCOPE_KEY, scope);
+  } catch {}
+}
 
 let selected = null;
-let statsScope = 'month';
+let statsScope = loadStatsScope();
 let statsOffset = 0;
 const dayOpen = new Map();
 
@@ -51,12 +68,28 @@ function render() {
   if ($('#settingsDlg').open) renderSettings();
 }
 
+/** Dates that have at least one recorded match, oldest first. Empty days are skipped. */
+function playedDates() {
+  return S.allDays()
+    .filter((d) => d.matches > 0)
+    .map((d) => d.date)
+    .sort();
+}
+
+/** The nearest played day strictly before (dir < 0) or after the day on screen. */
+function neighborDay(dir) {
+  const date = S.getViewDate();
+  const dates = playedDates();
+  return dir < 0 ? dates.filter((d) => d < date).at(-1) : dates.find((d) => d > date);
+}
+
 function renderDay() {
   const date = S.getViewDate();
   const today = S.isToday();
   $('#dayText').textContent = today ? 'Today' : dayName(date);
   $('#dayLabel').classList.toggle('past', !today);
-  $('#nextDay').disabled = today;
+  $('#prevDay').disabled = !neighborDay(-1);
+  $('#nextDay').disabled = !neighborDay(1);
   const pick = $('#dayPick');
   pick.max = L.localDate();
   if (document.activeElement !== pick) pick.value = date;
@@ -84,9 +117,10 @@ function renderCourt(live) {
         <button class="win" data-act="win" data-side="${i}" title="${label}" aria-label="${label}">${icon('trophy')}</button>
       </div>`;
   });
+  const ball = m.sides.length === 2 ? '<span class="ball" aria-hidden="true"></span>' : '';
   put(
     el,
-    `<div class="court-floor">
+    `<div class="court-floor" data-sides="${m.sides.length}">
       <span class="court-line service"></span>
       <span class="court-line short"></span>
       <span class="court-line receive"></span>
@@ -95,6 +129,7 @@ function renderCourt(live) {
       <span class="box-line c"></span>
       <span class="box-line d"></span>
       <div class="teams" data-sides="${m.sides.length}">${teams.join('')}</div>
+      ${ball}
     </div>`,
   );
 }
@@ -183,18 +218,20 @@ function renderStats() {
   $('#periodLabel').textContent = period().label;
   const days = periodDays();
 
-  const agg = L.aggregate(days.flatMap((d) => d.rows)).sort((a, b) => byName(a.player, b.player));
+  const agg = L.aggregate(days.flatMap((d) => d.rows)).sort(
+    (a, b) => b.score - a.score || byName(a.player, b.player),
+  );
   put(
     $('#statsBody'),
     agg.length
       ? `<table class="stats">
-          <thead><tr><th>Player</th><th>Played</th><th>Won</th><th>Win %</th></tr></thead>
+          <thead><tr><th>Player</th><th>Played</th><th>Won</th><th>Win %</th><th>Score</th></tr></thead>
           <tbody>${agg
             .map(
               (r) =>
                 `<tr><td>${esc(r.player)}</td><td>${r.played}</td><td>${r.wins}</td><td>${
                   r.played ? `${Math.round(L.winPct(r) * 100)}%` : '–'
-                }</td></tr>`,
+                }</td><td>${L.formatScore(r.score)}</td></tr>`,
             )
             .join('')}</tbody></table>`
       : '<p class="stats empty">No results</p>',
@@ -228,14 +265,12 @@ function dayGroup(day) {
   const { date, history } = day;
   const viewing = date === S.getViewDate();
   const open = dayOpen.has(date) ? dayOpen.get(date) : date === L.localDate();
-  const totals = L.aggregate(day.rows).sort(
-    (a, b) => b.wins - a.wins || a.losses - b.losses || byName(a.player, b.player),
-  );
+  const totals = L.aggregate(day.rows).sort((a, b) => b.score - a.score || byName(a.player, b.player));
   const stars = L.starsOf(totals);
   const standings = totals
     .map((r) => {
       const emoji = dayMark(r.player, stars, r.played);
-      return `<span><b>${esc(r.player)}</b>${emoji ? ` ${emoji}` : ''} ${r.wins}-${r.losses}</span>`;
+      return `<span><b>${esc(r.player)}</b>${emoji ? ` ${emoji}` : ''} ${r.wins}-${r.losses} ${L.formatScore(r.score)}</span>`;
     })
     .join('');
   const body = history
@@ -395,7 +430,10 @@ $('#daysList').addEventListener(
   true,
 );
 
-const shiftDay = (n) => goToDay(L.addDays(S.getViewDate(), n));
+const shiftDay = (n) => {
+  const date = neighborDay(n);
+  if (date) goToDay(date);
+};
 $('#prevDay').onclick = () => shiftDay(-1);
 $('#nextDay').onclick = () => shiftDay(1);
 $('#dayPick').onchange = (e) => e.target.value && goToDay(e.target.value);
@@ -438,9 +476,10 @@ document.querySelectorAll('dialog').forEach((d) => {
 
 $('#statsSeg').onclick = (e) => {
   const b = e.target.closest('button');
-  if (!b) return;
+  if (!b || !STATS_SCOPES.includes(b.dataset.scope)) return;
   statsScope = b.dataset.scope;
   statsOffset = 0;
+  rememberStatsScope(statsScope);
   renderStats();
 };
 $('#prevPeriod').onclick = () => (statsOffset--, renderStats());

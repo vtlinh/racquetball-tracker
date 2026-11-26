@@ -44,15 +44,21 @@ const matchupKey = (sides) => sides.map(teamKey).sort().join(' v ');
 
 export function playerStats(history, names = []) {
   const s = {};
-  const get = (n) => (s[n] ??= { played: 0, wins: 0, losses: 0, out: 0 });
+  const get = (n) => (s[n] ??= { played: 0, wins: 0, losses: 0, out: 0, score: 0 });
   names.forEach(get);
   for (const m of history) {
+    const winPoints = modeOf(m.sides) === '3way' ? 1.5 : 1;
     m.sides.forEach((side, i) =>
       side.forEach((p) => {
         const r = get(p);
         r.played++;
-        if (i === m.win) r.wins++;
-        else r.losses++;
+        if (i === m.win) {
+          r.wins++;
+          r.score += winPoints;
+        } else {
+          r.losses++;
+          r.score -= 1;
+        }
       }),
     );
     (m.out || []).forEach((p) => get(p).out++);
@@ -319,12 +325,21 @@ export function aggregate(rows, prefix) {
   const by = {};
   for (const r of rows) {
     if (prefix && !String(r.date).startsWith(prefix)) continue;
-    const a = (by[r.player] ??= { player: r.player, days: 0, played: 0, wins: 0, losses: 0, out: 0 });
+    const a = (by[r.player] ??= {
+      player: r.player,
+      days: 0,
+      played: 0,
+      wins: 0,
+      losses: 0,
+      out: 0,
+      score: 0,
+    });
     a.days++;
     a.played += +r.played || 0;
     a.wins += +r.wins || 0;
     a.losses += +r.losses || 0;
     a.out += +r.out || 0;
+    a.score += r.score != null ? +r.score : (+r.wins || 0) - (+r.losses || 0);
   }
   return Object.values(by).sort(
     (x, y) => winPct(y) - winPct(x) || y.wins - x.wins || x.player.localeCompare(y.player),
@@ -333,23 +348,33 @@ export function aggregate(rows, prefix) {
 
 export const winPct = (r) => (r.played ? r.wins / r.played : 0);
 
+/** Signed points, with a plus on positive totals. Halves stay one decimal. */
+export function formatScore(n) {
+  const v = Math.round(+n * 10) / 10;
+  const text = Number.isInteger(v) ? String(v) : v.toFixed(1);
+  return v > 0 ? `+${text}` : text;
+}
+
 /**
- * Crown: most wins, then fewest losses. Poop: most losses, then fewest wins.
- * Only someone who played at least one game is eligible. A tie that survives the
- * tiebreak names no one; someone holding both keeps only the crown.
+ * Crown: the highest score. Poop: the lowest score.
+ * Only someone who played at least one game is eligible. A tie for either
+ * names no one. Someone who would hold both keeps only the crown.
  */
 export const dayStars = (history) =>
   starsOf(Object.entries(playerStats(history)).map(([player, r]) => ({ player, ...r })));
 
-/** Same as dayStars, from per-player totals ({ player, played, wins, losses }). */
+/** Same as dayStars, from per-player totals ({ player, played, score } or wins and losses). */
 export function starsOf(records) {
-  const ranked = records.filter((r) => r.played >= 1).map((r) => ({ p: r.player, w: r.wins, l: r.losses }));
+  const ranked = records
+    .filter((r) => r.played >= 1)
+    .map((r) => ({
+      p: r.player,
+      score: r.score != null ? +r.score : (+r.wins || 0) - (+r.losses || 0),
+    }));
   if (ranked.length < 2) return { crown: null, poop: null };
-  const outright = (key) => {
-    const [a, b] = [...ranked].sort((x, y) => cmpKey(key(x), key(y)));
-    return cmpKey(key(a), key(b)) === 0 ? null : a.p;
-  };
-  const crown = outright((r) => [-r.w, r.l]);
-  const poop = outright((r) => [-r.l, r.w]);
+  const high = [...ranked].sort((a, b) => b.score - a.score);
+  const low = [...ranked].sort((a, b) => a.score - b.score);
+  const crown = high[0].score === high[1].score ? null : high[0].p;
+  const poop = low[0].score === low[1].score ? null : low[0].p;
   return { crown, poop: poop === crown ? null : poop };
 }
