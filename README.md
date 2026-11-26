@@ -66,6 +66,6 @@ npm run icons    # regenerate PNG icons
 node tests/mock-api-server.mjs   # local stand-in for the Apps Script API on :8081
 ```
 
-Pushing to `main` runs the tests and publishes the site to the `gh-pages` branch (GitHub Pages).
+Pushing to `main` runs the tests and publishes the site to the `gh-pages` branch (GitHub Pages). Merge a finished pull request into `main` once its tests pass. That merge is what publishes the site.
 
 GitHub Pages has to be switched on once by a repo admin: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, then pick **`gh-pages`** and **`/ (root)`** and save. The app is then live at https://vtlinh.github.io/racquetball-tracker/ and updates on every push to `main`.
