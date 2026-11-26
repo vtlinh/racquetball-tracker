@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=50" />
+    <link rel="stylesheet" href="css/styles.css?v=51" />
   </head>
   <body>
     <main>
@@ -32,6 +32,11 @@
           <button class="btn" id="readBtn" title="Read only" aria-pressed="false" data-icon="eye"></button>
         </nav>
       </header>
+
+      <div class="meal">
+        <p id="mealText" class="meal-text">No restaurant yet</p>
+        <button class="btn" id="mealBtn" title="Edit restaurants" data-icon="utensils"></button>
+      </div>
 
       <section id="court" class="match"></section>
       <div id="outRow" class="out-row"></div>
@@ -59,12 +64,24 @@
 
     <div id="toast" class="toast" role="status" hidden></div>
 
+    <dialog id="mealDlg" class="sheet">
+      <header class="sheet-head">
+        <strong>Restaurants</strong>
+        <button class="btn" data-close title="Close" data-icon="x"></button>
+      </header>
+      <div id="mealList" class="roster"></div>
+      <form id="mealForm" class="row">
+        <input id="newMeal" placeholder="Add restaurant" autocomplete="off" maxlength="40" />
+        <button class="btn" title="Add" data-icon="plus"></button>
+      </form>
+    </dialog>
+
     <script>
       // When a new service worker takes over, reload so the page and its script stay in step.
       if (navigator.serviceWorker && navigator.serviceWorker.controller) {
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=50"></script>
+    <script type="module" src="js/app.js?v=51"></script>
   </body>
 </html>

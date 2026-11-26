@@ -80,6 +80,7 @@ function render() {
   renderOut(live, history);
   renderPlayers(live, history);
   renderStats();
+  renderMeal();
 }
 
 /** Dates that have at least one recorded match, oldest first. Empty days are skipped. */
@@ -128,6 +129,7 @@ function renderTools(live) {
   readBtn.setAttribute('aria-label', label);
   readBtn.setAttribute('aria-pressed', String(readOnly));
   readBtn.classList.toggle('on', readOnly);
+  $('#mealBtn').hidden = readOnly;
 }
 
 function renderCourt(live) {
@@ -429,6 +431,25 @@ function dayGroup(day) {
   </details>`;
 }
 
+function renderMeal() {
+  const date = S.getViewDate();
+  const name = L.restaurantFor(date, S.getState().restaurants, S.gameDates());
+  $('#mealText').textContent = name ? `Eating at ${name}` : 'No restaurant yet';
+  if ($('#mealDlg').open) renderMealList();
+}
+
+function renderMealList() {
+  const list = S.getState().restaurants || [];
+  $('#mealList').innerHTML = list.length
+    ? list
+        .map(
+          (p) =>
+            `<span class="pill">${esc(p)}<button class="x" data-remove-meal="${esc(p)}" title="Remove ${esc(p)}">${icon('x')}</button></span>`,
+        )
+        .join('')
+    : '<span class="muted">None yet</span>';
+}
+
 // ---- events ---------------------------------------------------------------------
 
 let toastTimer = 0;
@@ -441,6 +462,7 @@ function setReadOnly(on) {
   const t = $('#toast');
   t.hidden = true;
   clearTimeout(toastTimer);
+  if ($('#mealDlg').open) $('#mealDlg').close();
   render();
 }
 
@@ -597,6 +619,31 @@ $('#shuffleBtn').onclick = () => {
 $('#readBtn').onclick = () => {
   if (readOnly && !confirm('Leave read only and allow edits?')) return;
   setReadOnly(!readOnly);
+};
+
+$('#mealBtn').onclick = () => {
+  if (readOnly) return;
+  renderMealList();
+  $('#mealDlg').showModal();
+};
+$('#mealDlg').addEventListener('click', (e) => {
+  const d = $('#mealDlg');
+  const r = d.getBoundingClientRect();
+  const outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+  if ((e.target === d && outside) || e.target.closest('[data-close]')) d.close();
+});
+$('#mealList').onclick = (e) => {
+  if (readOnly) return;
+  const b = e.target.closest('[data-remove-meal]');
+  if (!b) return;
+  S.setRestaurants((S.getState().restaurants || []).filter((n) => n !== b.dataset.removeMeal));
+};
+$('#mealForm').onsubmit = (e) => {
+  e.preventDefault();
+  if (readOnly) return;
+  const n = $('#newMeal').value.trim();
+  if (n) S.setRestaurants([...(S.getState().restaurants || []), n]);
+  $('#newMeal').value = '';
 };
 
 $('#statsSeg').onclick = (e) => {
