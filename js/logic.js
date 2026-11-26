@@ -128,25 +128,33 @@ export function formatPlaceAddress(props = {}) {
   return [street, [city, region].filter(Boolean).join(', ')].filter(Boolean).join(', ');
 }
 
-/** Named places from a Photon response. With a location, the nearest one is first. */
+/** Named places from a Photon response. With a location, the nearest one is first.
+    The same name at the same address is listed once. */
 export function placesFromPhoton(features, here) {
-  const out = [];
-  const seen = new Set();
+  const found = [];
   for (const feature of features || []) {
     const props = feature?.properties || {};
     const name = String(props.name || '').trim().replace(/\s+/g, ' ');
     const [lng, lat] = feature?.geometry?.coordinates || [];
     if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    const key = `${name.toLocaleLowerCase()}|${lat.toFixed(4)}|${lng.toFixed(4)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
     const place = { name, lat, lng };
     const address = formatPlaceAddress(props);
     if (address) place.address = address;
     if (here) place.km = distanceKm(here, place);
+    found.push(place);
+  }
+  if (here) found.sort((a, b) => a.km - b.km || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  const out = [];
+  const seen = new Set();
+  for (const place of found) {
+    const where = place.address
+      ? place.address.toLocaleLowerCase()
+      : `${place.lat.toFixed(3)},${place.lng.toFixed(3)}`;
+    const key = `${place.name.toLocaleLowerCase()}|${where}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(place);
   }
-  if (here) out.sort((a, b) => a.km - b.km || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
   return out;
 }
 

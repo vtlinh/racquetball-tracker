@@ -201,6 +201,27 @@ test('a restaurant keeps the address picked for it, and maps opens there', () =>
   assert.equal(places[0].address, '10 Main St, Reston, VA');
   assert.ok(places[0].km < places[1].km);
   assert.equal(L.formatMiles(places[0].km), '0.9 mi');
+  const dupes = L.placesFromPhoton(
+    [
+      {
+        properties: { name: 'Viva Margarita', housenumber: '163', street: 'Old River Road', city: 'Edgewater', state: 'New Jersey' },
+        geometry: { coordinates: [-73.9927111, 40.8064909] },
+      },
+      {
+        properties: { name: 'Viva Margarita', housenumber: '163', street: 'Old River Road', city: 'Edgewater', state: 'New Jersey' },
+        geometry: { coordinates: [-73.9925604, 40.8064665] },
+      },
+      {
+        properties: { name: 'Viva Margarita', housenumber: '10', street: 'Other St', city: 'Reston', state: 'VA' },
+        geometry: { coordinates: [-77.36, 38.96] },
+      },
+    ],
+    { lat: 38.95, lng: -77.35 },
+  );
+  assert.deepEqual(
+    dupes.map((p) => p.address),
+    ['10 Other St, Reston, VA', '163 Old River Road, Edgewater, New Jersey'],
+  );
 });
 
 test('restaurants are ordered by weight, then by name', () => {
