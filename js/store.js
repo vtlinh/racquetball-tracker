@@ -264,12 +264,18 @@ function legacyMatches(rows) {
 
 /** Every day with results, newest first: { date, rows (per player), history (null for legacy), matches }. */
 export function allDays() {
-  const days = Object.entries(state.log).map(([date, history]) => ({
-    date,
-    history,
-    rows: L.dayRows(date, history).days.map(rowToDay),
-    matches: history.length,
-  }));
+  const days = Object.entries(state.log).map(([date, history]) => {
+    const stats = L.playerStats(history);
+    return {
+      date,
+      history,
+      rows: L.dayRows(date, history).days.map((r) => ({
+        ...rowToDay(r),
+        score: stats[r[2]]?.score ?? 0,
+      })),
+      matches: history.length,
+    };
+  });
   const logged = new Set(Object.keys(state.log));
   const legacy = {};
   for (const r of state.legacy) if (!logged.has(r.date)) (legacy[r.date] ||= []).push(r);

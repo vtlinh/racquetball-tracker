@@ -286,33 +286,80 @@ test('dayRows and aggregate produce the per-day rows and period totals', () => {
     agg.reduce((n, r) => n + r.wins, 0),
     12,
   );
+  assert.equal(
+    agg.reduce((n, r) => n + r.score, 0),
+    0,
+    'doubles points cancel when score falls back to wins minus losses',
+  );
 });
 
-test('crown: most wins then fewest losses; poop: most losses then fewest wins; ties get nothing', () => {
+test('points: +1/-1 in singles and doubles, +1.5/-1 in triples, sitters unchanged', () => {
+  const dbl = L.playerStats([
+    {
+      sides: [
+        ['A', 'B'],
+        ['C', 'D'],
+      ],
+      out: ['E'],
+      win: 0,
+      t: 0,
+    },
+  ]);
+  assert.equal(dbl.A.score, 1);
+  assert.equal(dbl.B.score, 1);
+  assert.equal(dbl.C.score, -1);
+  assert.equal(dbl.D.score, -1);
+  assert.equal(dbl.E.score, 0);
+  assert.equal(dbl.E.played, 0);
+
+  const single = L.playerStats([{ sides: [['A'], ['B']], out: [], win: 1, t: 0 }]);
+  assert.equal(single.A.score, -1);
+  assert.equal(single.B.score, 1);
+
+  const triple = [{ sides: [['A'], ['B'], ['C']], out: [], win: 0, t: 0 }];
+  const cut = L.playerStats(triple);
+  assert.equal(cut.A.score, 1.5);
+  assert.equal(cut.B.score, -1);
+  assert.equal(cut.C.score, -1);
+  assert.deepEqual(L.dayStars(triple), { crown: 'A', poop: null });
+  assert.deepEqual(L.dayStars([...triple, { sides: [['B'], ['A'], ['C']], out: [], win: 0, t: 0 }]), {
+    crown: null,
+    poop: 'C',
+  });
+
+  assert.equal(L.formatScore(1), '+1');
+  assert.equal(L.formatScore(1.5), '+1.5');
+  assert.equal(L.formatScore(3), '+3');
+  assert.equal(L.formatScore(-1), '-1');
+  assert.equal(L.formatScore(-1.5), '-1.5');
+  assert.equal(L.formatScore(0), '0');
+});
+
+test('crown is the unique high score and poop is the unique low score', () => {
   const m = (a, b, win, out = []) => ({ sides: [a, b], out, win, t: 0 });
   const h = [
     m(['A', 'B'], ['C', 'D'], 0, ['E']),
     m(['A', 'C'], ['B', 'E'], 0, ['D']),
     m(['A', 'E'], ['C', 'D'], 1, ['B']),
   ];
-  // A 2-1, B 1-1, C 2-1, D 1-2, E 0-2: crown tied all the way; poop tie broken by fewer wins
+  // Scores: A +1, B 0, C +1, D 0, E -2. The high score is tied, so no crown.
   assert.deepEqual(L.dayStars(h), { crown: null, poop: 'E' });
-  // A 3-1, B 1-2, C 2-1, D 2-2, E 0-3
+  // Scores: A +2, B -1, C +1, D +1, E -3.
   assert.deepEqual(L.dayStars([...h, m(['A', 'D'], ['B', 'E'], 0, ['C'])]), { crown: 'A', poop: 'E' });
-  // A 2-0 beats C 2-1 on losses; D 0-3 has the most losses
+  // Scores: A +2, B -1, C +1, D -3, E +1.
   const h3 = [
     m(['A', 'B'], ['C', 'D'], 0),
     m(['A', 'C'], ['B', 'D'], 0),
     m(['C', 'E'], ['B', 'D'], 0, ['A']),
   ];
   assert.deepEqual(L.dayStars(h3), { crown: 'A', poop: 'D' });
-  // A 1-1, B 1-1, C 1-1, D 0-1, E 1-0: E has no losses; D lost once with no wins
+  // Scores: A 0, B 0, C 0, D -1, E +1.
   const h4 = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['C', 'E'], ['A', 'B'], 0, ['D'])];
   assert.deepEqual(L.dayStars(h4), { crown: 'E', poop: 'D' });
-  // E sat both games, so the marks stay with people who played: A 2-0, D 0-2.
+  // E sat both games. Scores among those who played: A +2, B 0, C 0, D -2.
   const satAll = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['A', 'C'], ['B', 'D'], 0, ['E'])];
   assert.deepEqual(L.dayStars(satAll), { crown: 'A', poop: 'D' });
-  // A made-up 0-game record with more wins and losses must not take either mark.
+  // A record with no games played cannot take a mark, even with a wild win-loss line.
   assert.deepEqual(
     L.starsOf([
       { player: 'A', played: 2, wins: 2, losses: 0 },
@@ -321,6 +368,21 @@ test('crown: most wins then fewest losses; poop: most losses then fewest wins; t
     ]),
     { crown: 'A', poop: 'B' },
   );
+  // Points outrank the win total: B has fewer wins and the higher score.
+  assert.deepEqual(
+    L.starsOf([
+      { player: 'A', played: 5, wins: 3, losses: 2, score: 1 },
+      { player: 'B', played: 2, wins: 2, losses: 0, score: 2 },
+      { player: 'C', played: 2, wins: 0, losses: 2, score: -2 },
+    ]),
+    { crown: 'B', poop: 'C' },
+  );
+  const row = (player, score) => ({ player, played: 1, score });
+  assert.deepEqual(L.starsOf([row('A', 5), row('B', 0), row('C', -1)]), { crown: 'A', poop: 'C' });
+  assert.deepEqual(L.starsOf([row('A', 5), row('B', 5), row('C', -1)]), { crown: null, poop: 'C' });
+  assert.deepEqual(L.starsOf([row('A', 5), row('B', 0), row('C', 0)]), { crown: 'A', poop: null });
+  assert.deepEqual(L.starsOf([row('A', 1), row('B', 1), row('C', 1)]), { crown: null, poop: null });
+  assert.deepEqual(L.starsOf([row('A', 4)]), { crown: null, poop: null });
   assert.deepEqual(L.dayStars([m(['A', 'B'], ['C', 'D'], 0)]), { crown: null, poop: null });
   assert.deepEqual(L.dayStars([]), { crown: null, poop: null });
 });
