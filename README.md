@@ -15,7 +15,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 - **The winning pair is never teamed together in the next match.** Among the remaining options, the split with the fewest repeat teammates today is picked, so pairings spread out.
 - **Manual overrides:** tap a name on the court, then tap another name to swap them (works between teams and the "Out" players). The coffee cup beside a name sits that player out, and more than one player can sit. Tap the cup again to bring them back while the court has room for them. An override applies to that match only.
 - **Changing who sits out always reshuffles the teams**, so the player coming in doesn't just take the old spot. A swap that would put the last winning pair on the same team is refused, so that rule holds for manual changes too.
-- The shuffle button re-splits the current players into a different legal pairing. On a two-team court a ball travels the floor and rebounds off the walls and the player names.
+- The shuffle button re-splits the current players into a different legal pairing. On a two-team court a ball travels between the teams. It stops on the inner edge of each side's names and rebounds off the top and bottom walls.
 
 ## Results by day
 
