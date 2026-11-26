@@ -179,7 +179,7 @@ main {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 14px;
 }
 .meal-text {
   flex: 1;
