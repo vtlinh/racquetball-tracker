@@ -42,7 +42,7 @@ function rememberStatsScope(scope) {
 let selected = null;
 let statsScope = loadStatsScope();
 let statsOffset = 0;
-/** null keeps names A–Z. 'desc' puts the higher value first. */
+/** null keeps names A–Z. 'desc' puts the higher value first. Player has no up-arrow sort. */
 let statsSort = null;
 const dayOpen = new Map();
 
@@ -269,10 +269,12 @@ function statsHeader() {
 }
 
 function cycleStatsSort(key) {
+  const names = key === 'player';
   if (statsSort?.key !== key) statsSort = { key, dir: 'desc' };
-  else if (statsSort.dir === 'desc') statsSort = { key, dir: 'asc' };
+  else if (!names && statsSort.dir === 'desc') statsSort = { key, dir: 'asc' };
   else statsSort = null;
   renderStats();
+  if (!statsSort) return;
   document.querySelector(`#statsBody th[data-sort="${CSS.escape(key)}"]`)?.focus();
 }
 
