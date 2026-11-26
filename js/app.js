@@ -66,8 +66,8 @@ let selected = null;
 let readOnly = loadReadOnly();
 let statsScope = loadStatsScope();
 let statsOffset = 0;
-/** null keeps names A–Z. 'desc' puts the higher value first. Player has no up-arrow sort. */
-let statsSort = null;
+/** Opens on Score, higher first. null keeps names A–Z. Player has no up-arrow sort. */
+let statsSort = { key: 'score', dir: 'desc' };
 const dayOpen = new Map();
 
 /** Only touch the DOM when markup changed, so a background re-render can't swallow a tap mid-press. */
@@ -469,15 +469,16 @@ function renderMealWho() {
   const id = deviceId();
   const claims = L.cleanClaims(state.claims);
   const mine = S.myName(id);
-  const taken = Object.keys(claims).filter((name) => claims[name] !== id);
+  const taken = Object.keys(claims);
+  const others = taken.filter((name) => claims[name] !== id);
   const options = [`<option value="">${mine ? 'Remove claim' : 'Claim a name'}</option>`];
+  if (mine) options.push(`<option value="${esc(mine)}" selected hidden>${esc(mine)}</option>`);
   for (const name of state.roster || []) {
     if (taken.some((t) => t.toLocaleLowerCase() === name.toLocaleLowerCase())) continue;
-    const selected = mine.toLocaleLowerCase() === name.toLocaleLowerCase() ? ' selected' : '';
-    options.push(`<option value="${esc(name)}"${selected}>${esc(name)}</option>`);
+    options.push(`<option value="${esc(name)}">${esc(name)}</option>`);
   }
-  const takenLine = taken.length
-    ? `<p class="meal-taken">Claimed on another browser: ${taken.map(esc).join(', ')}</p>`
+  const takenLine = others.length
+    ? `<p class="meal-taken">Claimed on another browser: ${others.map(esc).join(', ')}</p>`
     : '';
   put(
     $('#mealWho'),
@@ -498,8 +499,8 @@ function renderMealList() {
           const avg = L.restaurantWeight(r, picks);
           const minePick = mine ? (picks[mineKey]?.[r.name] ?? null) : null;
           const select = mine
-            ? `<select data-my-weight="${name}" aria-label="Your weight for ${name}" title="Leave blank to use the average"${readOnly ? ' disabled' : ''}>${weightOptions(minePick, true)}</select>`
-            : `<select data-meal-weight="${name}" aria-label="Weight for ${name}" title="List weight, 5 is picked most often"${readOnly ? ' disabled' : ''}>${weightOptions(r.weight)}</select>`;
+            ? `<select data-my-weight="${name}" aria-label="Your score for ${name}" title="Leave blank to use the average"${readOnly ? ' disabled' : ''}>${weightOptions(minePick, true)}</select>`
+            : `<select aria-label="Score for ${name}" title="Claim a name to pick a score" disabled>${weightOptions(null, true)}</select>`;
           return `<div class="meal-item">
             <span class="meal-name"><span class="meal-label">${name}</span> <span class="meal-avg">(${L.formatWeight(avg)})</span></span>
             ${select}
@@ -677,9 +678,22 @@ $('#shuffleBtn').onclick = () => {
   S.reshuffle();
 };
 $('#readBtn').onclick = () => {
-  if (readOnly && !confirm('Leave read only and allow edits?')) return;
-  setReadOnly(!readOnly);
+  if (readOnly) {
+    $('#readDlg').showModal();
+    return;
+  }
+  setReadOnly(true);
 };
+$('#readDlg').addEventListener('click', (e) => {
+  const d = $('#readDlg');
+  const yes = e.target.closest('[data-read="yes"]');
+  const no = e.target.closest('[data-read="no"]');
+  const r = d.getBoundingClientRect();
+  const outside = e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
+  if (!yes && !no && !outside) return;
+  d.close();
+  if (yes) setReadOnly(false);
+});
 
 $('#mealBtn').onclick = () => {
   if (readOnly) return;
@@ -710,18 +724,12 @@ $('#mealList').addEventListener('change', (e) => {
   if (readOnly) return;
   const mine = e.target.closest('select[data-my-weight]');
   if (mine) {
+    if (mine.disabled) return;
     const who = S.myName(deviceId());
     if (!who) return;
     S.setMealPick(who, mine.dataset.myWeight, mine.value === '' ? null : Number(mine.value));
     return;
   }
-  const sel = e.target.closest('select[data-meal-weight]');
-  if (!sel) return;
-  const name = sel.dataset.mealWeight;
-  const weight = Number(sel.value);
-  S.setRestaurants(
-    L.cleanRestaurants(S.getState().restaurants).map((r) => (r.name === name ? { ...r, weight } : r)),
-  );
 });
 $('#mealForm').onsubmit = (e) => {
   e.preventDefault();

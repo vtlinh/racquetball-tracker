@@ -1,4 +1,4 @@
-# 2v2 Lineup
+# Racquetball Tracker
 
 An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball. It records results and keeps daily, monthly and yearly stats in a Google Sheet.
 
@@ -37,10 +37,10 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 | Player name                | Include that player in the lineup, or leave them out.                                                                                                          |
 | Coffee cup (beside a name) | Sit that player out, or bring them back. Several players can sit at once.                                                                                      |
 | All / Year / Month, arrows | Stats for all time, a year, or a month, with that period's results by day. Opens on All, and remembers the last choice on this device. All time has no arrows. |
-| Utensils                   | Edit the restaurant list. Each place has a list weight from 1 to 5, and 5 is picked most often. The list is ordered by that weight, highest first, then by name. The average is in parentheses beside the name. Your weight is on that same line. Leave it blank to use the average. Claim your name on this browser; that name stays yours until you remove the claim or the claim is cleared in the sheet. A name with no weight counts as the average of the names that set one. The first game day seeds the sequence, and each later game day takes the next place. The next game day picks a different place unless the list has only one. |
-| Read only                  | Hides the edit buttons and ignores writes: wins, swaps, sit-outs, check-ins, shuffles, undo, redo, result edits, and the restaurant list. Tap it again and confirm to edit. The choice is remembered on this device. |
+| Utensils                   | Edit the restaurant list. Score 5 is highest and picked most often. The list is ordered by that score, highest first, then by name. The average is in parentheses beside the name. Your score is on that same line. Leave it blank to use the average. Claim your name before you pick a score. You can add a restaurant before that. A claimed name leaves the choice list until you remove the claim or the claim is cleared in the sheet. A name with no score counts as the average of the names that set one. The first game day seeds the sequence, and each later game day takes the next place. The next game day picks a different place unless the list has only one. |
+| Read only                  | Hides the edit buttons and ignores writes: wins, swaps, sit-outs, check-ins, shuffles, undo, redo, result edits, and the restaurant list. Tap it again and choose Yes to exit read-only mode. The choice is remembered on this device. |
 
-Each day in the results shows the score. Played and won are in the stats table. Names are A–Z until you tap a column. Tapping Player lists Z–A, and tapping it again returns to A–Z. On Played, Won, Win %, and Score, the first tap puts the higher value on top, the next tap reverses it, and a third tap returns to A–Z. A down arrow marks higher-first, and an up arrow marks the reverse on those columns.
+Each day in the results shows the score. Played and won are in the stats table. The table opens sorted by Score, higher first. Tapping Player lists Z–A, and tapping it again returns to A–Z. On Played, Won, Win %, and Score, a tap from another column puts the higher value on top, the next tap reverses it, and a further tap returns to A–Z. Score already opens higher first, so the next tap on Score reverses it. A down arrow marks higher-first, and an up arrow marks the reverse on those columns.
 
 ## Google Sheet storage
 
