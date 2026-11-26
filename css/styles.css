@@ -232,28 +232,6 @@ main {
 .court-line.short {
   left: 50%;
 }
-/* Three names sit on equal thirds, so the center line runs through the middle name.
-   The two lines that remain are both solid, and the service ticks span that gap. */
-.court-floor[data-sides='3'] .court-line.short {
-  display: none;
-}
-.court-floor[data-sides='3'] .court-line.receive {
-  width: 2px;
-  background: #d6453d;
-  border-left: 0;
-}
-.court-floor[data-sides='3'] .box-line {
-  left: 37.5%;
-  width: 25%;
-}
-/* The name row owns the bottom of a triple, so the court marks stop above it. */
-.court-floor[data-sides='3'] .court-line {
-  bottom: 38px;
-}
-.court-floor[data-sides='3'] .box-line.c,
-.court-floor[data-sides='3'] .box-line.d {
-  display: none;
-}
 .court-line.receive {
   left: 37.5%;
   width: 0;
@@ -276,6 +254,49 @@ main {
 }
 .box-line.d {
   bottom: 20%;
+}
+/* A triple turns the same marks: front wall on top, names along the back.
+   The receiving line stays dotted. */
+.court-floor[data-sides='3'] .court-line {
+  top: auto;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  width: auto;
+  height: 2px;
+}
+.court-floor[data-sides='3'] .court-line.service {
+  top: 37.5%;
+}
+.court-floor[data-sides='3'] .court-line.short {
+  top: 50%;
+}
+.court-floor[data-sides='3'] .court-line.receive {
+  top: 62.5%;
+  height: 0;
+  background: none;
+  border-left: 0;
+  border-top: 2px dotted #d6453d;
+}
+.court-floor[data-sides='3'] .box-line {
+  top: 37.5%;
+  bottom: auto;
+  width: 2px;
+  height: 12.5%;
+}
+.court-floor[data-sides='3'] .box-line.a {
+  left: 11%;
+}
+.court-floor[data-sides='3'] .box-line.b {
+  left: 20%;
+}
+.court-floor[data-sides='3'] .box-line.c {
+  left: auto;
+  right: 11%;
+}
+.court-floor[data-sides='3'] .box-line.d {
+  left: auto;
+  right: 20%;
 }
 .teams {
   position: absolute;
