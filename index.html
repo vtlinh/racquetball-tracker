@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=47" />
+    <link rel="stylesheet" href="css/styles.css?v=48" />
   </head>
   <body>
     <main>
@@ -29,7 +29,7 @@
           <button class="btn" id="undoBtn" title="Undo last result change" data-icon="undo"></button>
           <button class="btn" id="redoBtn" title="Redo" data-icon="redo" hidden></button>
           <button class="btn" id="shuffleBtn" title="Reshuffle teams" data-icon="shuffle"></button>
-          <button class="btn" id="settingsBtn" title="Settings" data-icon="settings"></button>
+          <button class="btn" id="readBtn" title="Read only" aria-pressed="false" data-icon="eye"></button>
         </nav>
       </header>
 
@@ -59,33 +59,12 @@
 
     <div id="toast" class="toast" role="status" hidden></div>
 
-    <dialog id="settingsDlg" class="sheet">
-      <header class="sheet-head">
-        <strong>Settings</strong>
-        <button class="btn" data-close title="Close" data-icon="x"></button>
-      </header>
-      <h3>Players</h3>
-      <div id="rosterList" class="roster"></div>
-      <form id="addPlayerForm" class="row">
-        <input id="newPlayer" placeholder="Add player" autocomplete="off" maxlength="20" />
-        <button class="btn" title="Add" data-icon="plus"></button>
-      </form>
-      <h3>Scoring</h3>
-      <ul class="scoring">
-        <li>Singles: +1 for the winner, −1 for the loser.</li>
-        <li>Doubles: +0.5 for each winner, −0.5 for each loser.</li>
-        <li>Triples: +1 for the winner, −0.5 for each of the other two.</li>
-        <li>Sitting out does not change the score.</li>
-        <li>The crown goes to the highest score and the poop to the lowest. A tie gets neither.</li>
-      </ul>
-    </dialog>
-
     <script>
       // When a new service worker takes over, reload so the page and its script stay in step.
       if (navigator.serviceWorker && navigator.serviceWorker.controller) {
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=47"></script>
+    <script type="module" src="js/app.js?v=48"></script>
   </body>
 </html>
