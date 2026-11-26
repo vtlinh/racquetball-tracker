@@ -170,8 +170,8 @@ main {
 }
 .match:has(.court-floor) {
   background: var(--teal);
-  /* Same outer height as the name card before the court drawing (12 + 62 + 14). */
-  height: 88px;
+  /* 20% taller than the previous 88px court. */
+  height: calc(88px * 1.2);
   padding: 0;
   border: 3px solid #d6453d;
   overflow: hidden;
