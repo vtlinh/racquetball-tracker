@@ -116,11 +116,16 @@ function renderCourt(live) {
     put(el, `<p class="empty">${n ? 'Need at least 2 players' : 'Check in who’s here below'}</p>`);
     return;
   }
-  const teams = m.sides.map((team, i) => {
-    const label = `${esc(team.join(' + '))} won`;
+  const shown =
+    m.sides.length === 3
+      ? [...m.sides.map((team, i) => ({ team, i }))].sort((a, b) => byName(a.team[0], b.team[0]))
+      : m.sides.map((team, i) => ({ team, i }));
+  const teams = shown.map(({ team, i }) => {
+    const names = [...team].sort(byName);
+    const label = `${esc(names.join(' + '))} won`;
     return `
       <div class="team">
-        <div class="team-names">${team.map((p) => nameBtn(p)).join('')}</div>
+        <div class="team-names">${names.map((p) => nameBtn(p)).join('')}</div>
         <button class="win" data-act="win" data-side="${i}" title="${label}" aria-label="${label}">${icon('trophy')}</button>
       </div>`;
   });
@@ -161,7 +166,14 @@ function renderOut(live, history) {
   put(
     el,
     `<span class="out-label">Out</span>
-     ${m.out.length ? m.out.map((p) => nameBtn(p, 'pill')).join('') : '<span class="muted">nobody</span>'}
+     ${
+       m.out.length
+         ? [...m.out]
+             .sort(byName)
+             .map((p) => nameBtn(p, 'pill'))
+             .join('')
+         : '<span class="muted">nobody</span>'
+     }
      <span class="hint">${hint}</span>`,
   );
 }
@@ -306,7 +318,8 @@ function resultTime(m) {
 
 function resultLine(m) {
   const withDelta = (names, won) =>
-    names
+    [...names]
+      .sort(byName)
       .map((p) => {
         const points = L.pointsFor(m, won);
         const tone = points < 0 ? 'down' : 'up';
@@ -315,10 +328,14 @@ function resultLine(m) {
       .join(' & ');
   const win = withDelta(m.sides[m.win], true);
   const lose = m.sides
-    .filter((_, j) => j !== m.win)
-    .map((t) => withDelta(t, false))
+    .map((t, j) => ({ t, j }))
+    .filter(({ j }) => j !== m.win)
+    .sort((a, b) => byName([...a.t].sort(byName)[0], [...b.t].sort(byName)[0]))
+    .map(({ t }) => withDelta(t, false))
     .join(', ');
-  const out = m.out?.length ? `<span class="muted"> · ${esc(m.out.join(', '))} sat</span>` : '';
+  const out = m.out?.length
+    ? `<span class="muted"> · ${esc([...m.out].sort(byName).join(', '))} sat</span>`
+    : '';
   const when = resultTime(m);
   const winners = `${when}${when ? ' ' : ''}<span class="w">${win}</span>`;
   const beaten = `beat ${lose}${out}`;
@@ -373,7 +390,8 @@ function dayGroup(day) {
 
 function renderSettings() {
   const { roster } = S.getState();
-  $('#rosterList').innerHTML = roster
+  $('#rosterList').innerHTML = [...roster]
+    .sort(byName)
     .map(
       (p) =>
         `<span class="pill">${esc(p)}<button class="x" data-remove="${esc(p)}" title="Remove ${esc(p)}">${icon('x')}</button></span>`,
