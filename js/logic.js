@@ -31,7 +31,8 @@ export function addDays(date, n) {
 export const MEAL_WEIGHTS = [1, 2, 3, 4, 5];
 
 /** Trimmed restaurant names, first spelling kept, later case-duplicates dropped.
-    A plain string weighs 1. Anything outside 1–5 becomes 1. */
+    A plain string weighs 1. Anything outside 1–5 becomes 1. A removed place stays in the
+    list so its weight and scores can come back. */
 export function cleanRestaurants(list) {
   const out = [];
   const seen = new Set();
@@ -41,9 +42,29 @@ export function cleanRestaurants(list) {
     if (!name || seen.has(key)) continue;
     seen.add(key);
     const weight = Math.round(Number(raw?.weight));
-    out.push({ name, weight: MEAL_WEIGHTS.includes(weight) ? weight : 1 });
+    const entry = { name, weight: MEAL_WEIGHTS.includes(weight) ? weight : 1 };
+    if (raw?.removed) entry.removed = true;
+    out.push(entry);
   }
   return out;
+}
+
+/** Hide a place without dropping its weight. Scores stored for that name stay put. */
+export function withoutRestaurant(list, name) {
+  const key = String(name || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  return cleanRestaurants(list).map((r) => (r.name.toLocaleLowerCase() === key ? { ...r, removed: true } : r));
+}
+
+/** Add a place, or bring back one that was removed, with its previous weight. */
+export function withRestaurant(list, name) {
+  const trimmed = String(name || '').trim().replace(/\s+/g, ' ');
+  const key = trimmed.toLocaleLowerCase();
+  const clean = cleanRestaurants(list);
+  if (!key) return clean;
+  const existing = clean.find((r) => r.name.toLocaleLowerCase() === key);
+  if (!existing) return cleanRestaurants([...clean, { name: trimmed, weight: 1 }]);
+  if (!existing.removed) return clean;
+  return clean.map((r) => (r === existing ? { name: r.name, weight: r.weight } : r));
 }
 
 /** A fixed number from the first game day's date. The same day always seeds the same sequence. */
@@ -156,9 +177,9 @@ export function formatWeight(n) {
   return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }
 
-/** Highest weight first. Equal weights are ordered by name. */
+/** Highest weight first. Equal weights are ordered by name. Removed places stay out. */
 export function rankedRestaurants(list, picks = {}) {
-  const entries = cleanRestaurants(list);
+  const entries = cleanRestaurants(list).filter((r) => !r.removed);
   const votes = cleanMealPicks(picks, entries);
   return [...entries].sort((a, b) => {
     const [an, ad] = weightParts(a, votes);

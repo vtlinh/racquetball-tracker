@@ -141,6 +141,31 @@ test('the shown weight is the average, or the list weight when nobody picked', (
   assert.equal(L.formatWeight(10 / 3), '3.3');
 });
 
+test('a removed restaurant keeps its score and comes back with the same weight', () => {
+  const list = [
+    { name: 'Pho', weight: 4 },
+    { name: 'Pizza', weight: 1 },
+  ];
+  const picks = { Linh: { Pho: 5 } };
+  const removed = L.withoutRestaurant(list, 'pho');
+  assert.deepEqual(removed, [
+    { name: 'Pho', weight: 4, removed: true },
+    { name: 'Pizza', weight: 1 },
+  ]);
+  assert.deepEqual(L.cleanMealPicks(picks, removed), picks);
+  assert.deepEqual(
+    L.rankedRestaurants(removed, picks).map((r) => r.name),
+    ['Pizza'],
+  );
+  for (const date of ['2026-05-01', '2026-05-02', '2026-05-03']) {
+    assert.equal(L.restaurantFor(date, removed, ['2026-05-01', '2026-05-02', '2026-05-03'], picks), 'Pizza');
+  }
+  const back = L.withRestaurant(removed, 'PHO');
+  assert.deepEqual(back, list);
+  assert.equal(L.restaurantWeight(back[0], L.cleanMealPicks(picks, back)), 5);
+  assert.deepEqual(L.withRestaurant(back, 'Pho'), back);
+});
+
 test('restaurants are ordered by weight, then by name', () => {
   assert.deepEqual(
     L.rankedRestaurants([

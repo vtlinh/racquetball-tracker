@@ -323,8 +323,8 @@ export function setRestaurants(list) {
   const picks = L.cleanMealPicks(state.mealPicks, clean);
   const prev = L.cleanRestaurants(state.restaurants);
   const prevPicks = L.cleanMealPicks(state.mealPicks, prev);
-  const sameList =
-    clean.length === prev.length && clean.every((r, i) => r.name === prev[i].name && r.weight === prev[i].weight);
+  const sameRow = (a, b) => a.name === b.name && a.weight === b.weight && !!a.removed === !!b.removed;
+  const sameList = clean.length === prev.length && clean.every((r, i) => sameRow(r, prev[i]));
   if (sameList && JSON.stringify(picks) === JSON.stringify(prevPicks)) return;
   commit({ restaurants: clean, mealPicks: picks });
 }
@@ -335,8 +335,9 @@ export function myName(deviceId) {
 }
 
 export function setMealPick(person, restaurant, weight) {
-  const list = L.cleanRestaurants(state.restaurants);
-  const picks = L.cleanMealPicks(state.mealPicks, list);
+  const all = L.cleanRestaurants(state.restaurants);
+  const list = all.filter((r) => !r.removed);
+  const picks = L.cleanMealPicks(state.mealPicks, all);
   const who = String(person || '').trim();
   const place = list.find((r) => r.name.toLocaleLowerCase() === String(restaurant || '').trim().toLocaleLowerCase());
   if (!who || !place) return;
@@ -348,7 +349,7 @@ export function setMealPick(person, restaurant, weight) {
   const next = { ...picks };
   if (Object.keys(mine).length) next[key] = mine;
   else delete next[key];
-  const cleaned = L.cleanMealPicks(next, list);
+  const cleaned = L.cleanMealPicks(next, all);
   if (JSON.stringify(cleaned) === JSON.stringify(picks)) return;
   commit({ mealPicks: cleaned });
 }
