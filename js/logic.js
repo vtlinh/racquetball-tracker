@@ -158,6 +158,29 @@ export function placesFromPhoton(features, here) {
   return out;
 }
 
+/** Place predictions from Google, in the order Google returned them.
+    The same name at the same address is listed once. `distanceMeters` becomes kilometers. */
+export function placesFromGoogle(predictions) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of predictions || []) {
+    const name = String(raw?.name || '').trim().replace(/\s+/g, ' ');
+    if (!name) continue;
+    const address = String(raw?.address || '').trim().replace(/\s+/g, ' ');
+    const where = address ? address.toLocaleLowerCase() : String(raw?.placeId || name).toLocaleLowerCase();
+    const key = `${name.toLocaleLowerCase()}|${where}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const place = { name };
+    if (address) place.address = address;
+    const meters = Number(raw?.distanceMeters);
+    if (Number.isFinite(meters)) place.km = meters / 1000;
+    if (raw?.placeId) place.placeId = raw.placeId;
+    out.push(place);
+  }
+  return out;
+}
+
 export function formatMiles(km) {
   const mi = Number(km) * 0.621371;
   if (!Number.isFinite(mi)) return '';
