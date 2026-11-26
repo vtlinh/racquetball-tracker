@@ -123,7 +123,7 @@ function renderCourt(live) {
       </div>`;
   });
   const ball =
-    m.sides.length === 2
+    m.sides.length >= 2
       ? '<span class="ball-trail a"></span><span class="ball-trail b"></span><span class="ball-trail c"></span><span class="ball" aria-hidden="true"></span>'
       : '';
   put(
@@ -509,7 +509,8 @@ $('#addPlayerForm').onsubmit = (e) => {
   $('#newPlayer').value = '';
 };
 
-/** The ball stays between the teams and stops on the inner edge of each side's letters. */
+/** On two sides the ball stays between the teams and stops on the inner edge of each side's letters.
+    On a triple the names sit along the bottom and the ball bounces in the space above them. */
 function rallyBall() {
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const trailLag = [4, 9, 15];
@@ -537,48 +538,70 @@ function rallyBall() {
     const floor = ball.parentElement;
     const trails = [...floor.querySelectorAll('.ball-trail')];
     const ballW = ball.offsetWidth;
+    const ballH = ball.offsetHeight;
     const floorBox = floor.getBoundingClientRect();
-    const mid = floorBox.left + floor.clientWidth / 2;
-    // The name buttons pad the letters. The stop is the inner edge of those letters, for the full height of the court.
-    let laneLeft = 0;
-    let laneRight = floor.clientWidth;
-    let sawLeft = false;
-    let sawRight = false;
-    for (const el of floor.querySelectorAll('.name')) {
-      const b = el.getBoundingClientRect();
-      if (b.width < 1) continue;
-      const pad = textPad(el);
-      const left = b.left + pad.l - floorBox.left;
-      const right = b.right - pad.r - floorBox.left;
-      if ((b.left + b.right) / 2 < mid) {
-        laneLeft = Math.max(laneLeft, right);
-        sawLeft = true;
-      } else {
-        laneRight = Math.min(laneRight, left);
-        sawRight = true;
-      }
-    }
+    const triples = floor.dataset.sides === '3';
     let minX = 0;
     let maxX = Math.max(0, floor.clientWidth - ballW);
-    if (sawLeft && sawRight && laneRight - laneLeft >= ballW + 4) {
-      minX = laneLeft;
-      maxX = laneRight - ballW;
+    let maxY = Math.max(0, floor.clientHeight - ballH);
+    if (triples) {
+      // The floor of the rally is the top of the name row.
+      let rowTop = floor.clientHeight;
+      let sawRow = false;
+      for (const el of floor.querySelectorAll('.team')) {
+        const b = el.getBoundingClientRect();
+        if (b.height < 1) continue;
+        rowTop = Math.min(rowTop, b.top - floorBox.top);
+        sawRow = true;
+      }
+      if (sawRow) maxY = Math.max(0, rowTop - ballH - 3);
+    } else {
+      const mid = floorBox.left + floor.clientWidth / 2;
+      // The name buttons pad the letters. The stop is the inner edge of those letters, for the full height of the court.
+      let laneLeft = 0;
+      let laneRight = floor.clientWidth;
+      let sawLeft = false;
+      let sawRight = false;
+      for (const el of floor.querySelectorAll('.name')) {
+        const b = el.getBoundingClientRect();
+        if (b.width < 1) continue;
+        const pad = textPad(el);
+        const left = b.left + pad.l - floorBox.left;
+        const right = b.right - pad.r - floorBox.left;
+        if ((b.left + b.right) / 2 < mid) {
+          laneLeft = Math.max(laneLeft, right);
+          sawLeft = true;
+        } else {
+          laneRight = Math.min(laneRight, left);
+          sawRight = true;
+        }
+      }
+      if (sawLeft && sawRight && laneRight - laneLeft >= ballW + 4) {
+        minX = laneLeft;
+        maxX = laneRight - ballW;
+      }
     }
-    const maxY = Math.max(0, floor.clientHeight - ball.offsetHeight);
+    const sides = floor.dataset.sides || '';
+    if (state && state.sides !== sides) {
+      state = null;
+      samples.length = 0;
+    }
     if (reduce) {
-      place(ball, maxX * 0.5, maxY * 0.45);
+      place(ball, triples ? (minX + maxX) * 0.5 : maxX * 0.5, maxY * (triples ? 0.4 : 0.45));
       ball.style.transform = 'none';
       trails.forEach((t) => (t.hidden = true));
       return;
     }
     if (!state) {
+      const laneH = triples ? Math.max(maxY, 24) : floor.clientHeight;
       state = {
         x: maxX * 0.46,
         y: maxY * 0.35,
-        vx: floor.clientWidth * 0.72,
-        vy: floor.clientHeight * 1.25,
+        vx: floor.clientWidth * (triples ? 0.48 : 0.72),
+        vy: laneH * 1.25,
         squash: 0,
         wall: 'right',
+        sides,
       };
       last = now;
     }
