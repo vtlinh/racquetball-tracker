@@ -181,6 +181,34 @@ export function placesFromGoogle(predictions) {
   return out;
 }
 
+const REGION =
+  /^(?:AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)(?:\s+\d{5}(?:-\d{4})?)?$/i;
+const REGION_NAMES = new Set([
+  'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado', 'connecticut', 'delaware',
+  'district of columbia', 'florida', 'georgia', 'hawaii', 'idaho', 'illinois', 'indiana', 'iowa',
+  'kansas', 'kentucky', 'louisiana', 'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota',
+  'mississippi', 'missouri', 'montana', 'nebraska', 'nevada', 'new hampshire', 'new jersey',
+  'new mexico', 'new york', 'north carolina', 'north dakota', 'ohio', 'oklahoma', 'oregon',
+  'pennsylvania', 'rhode island', 'south carolina', 'south dakota', 'tennessee', 'texas', 'utah',
+  'vermont', 'virginia', 'washington', 'west virginia', 'wisconsin', 'wyoming',
+]);
+
+function isRegion(part) {
+  return REGION.test(part) || REGION_NAMES.has(part.toLowerCase());
+}
+
+/** City from a saved place address, such as Fort Lee in "799 Abbott Blvd, Fort Lee, NJ 07024, USA". */
+export function placeCity(address) {
+  let parts = String(address || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (/^(?:usa|u\.s\.a\.|us|united states(?: of america)?)$/i.test(parts.at(-1) || '')) parts = parts.slice(0, -1);
+  if (parts.length < 2) return '';
+  const last = parts[parts.length - 1];
+  return isRegion(last) ? parts[parts.length - 2] : last;
+}
+
 export function formatMiles(km) {
   const mi = Number(km) * 0.621371;
   if (!Number.isFinite(mi)) return '';
