@@ -8,6 +8,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 ## How lineups are picked
 
 - Tap a player's name to include them in the lineup or leave them out (default roster: Rick, Leo, Linh, Nate, Doug). Anyone can join or leave mid-day, and the teams are reshuffled when they do.
+- When the Eastern Time date changes, the players who are still here are dealt a new lineup. Yesterday's teams do not carry over.
 - **5 players:** 2v2 with one sitting out. At the start the sitter is random. After a result, the sitter comes from the losing team: whoever has played the most today (ties are broken randomly). The previous sitter always comes back in.
 - **4 players:** 2v2, nobody sits out.
 - **3 players:** cut-throat (one winner). **2 players:** 1v1.
