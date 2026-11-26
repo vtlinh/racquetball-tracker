@@ -18,24 +18,24 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 ## Results by day
 
-- Every result is saved under its date as soon as you tap **Win**. There's no end-of-day step: each day's rows in the sheet are rewritten automatically whenever that day changes.
+- Every result is saved under its date as soon as you tap the trophy beside a team. There's no end-of-day step: each day's rows in the sheet are rewritten automatically whenever that day changes.
 - The day picker at the top (‹ Today ›) chooses which day new results go to. Today is the Eastern Time date, so an evening game stays on that day. Tap the date to jump to any past day, or use the pencil on a day in the results list. A past day is shown in gold.
 - Below the Month/Year stats, results are grouped by day, newest day first and newest result first. Only today starts expanded. Opening a day collapses the others, so one day is open at a time. Each result shows the time it was recorded, in Eastern Time, as `HH:MM`. Each day shows every player's wins-losses. Use ⇄ to change a result's winner and × to delete it.
 - 👑 goes to the day's most wins (a tie goes to whoever lost fewer); 💩 goes to the most losses (a tie goes to whoever won fewer). If it's still tied, nobody gets it. On the player row the mark sits above that player's name. In a day's history it sits beside the name. Only a player who played at least one game can receive one.
 
 ## Buttons
 
-| Icon                       | Action                                                                                                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Win (on each team)         | That team or player won, recorded on the day shown at the top, with the real time of the tap (`HH:MM` Eastern Time). The next lineup is picked automatically. |
-| Undo                       | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone.                       |
-| Redo                       | Puts back the last undone result change. It appears only after an undo, and a new result clears it.                                                           |
-| Shuffle                    | Re-split the teams.                                                                                                                                           |
-| ‹ date ›                   | Pick the day results are recorded on.                                                                                                                         |
-| Player name                | Include that player in the lineup, or leave them out.                                                                                                         |
-| Coffee cup (beside a name) | Sit that player out, or bring them back. Several players can sit at once.                                                                                     |
-| Month / Year / All, arrows | Stats for a month, a year, or all time, with that period's results by day. All time has no arrows.                                                            |
-| Settings                   | Roster and the Google Sheet connection.                                                                                                                       |
+| Icon                        | Action                                                                                                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trophy (right of the names) | That team or player won, recorded on the day shown at the top, with the real time of the tap (`HH:MM` Eastern Time). The next lineup is picked automatically. |
+| Undo                        | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone.                       |
+| Redo                        | Puts back the last undone result change. It appears only after an undo, and a new result clears it.                                                           |
+| Shuffle                     | Re-split the teams.                                                                                                                                           |
+| ‹ date ›                    | Pick the day results are recorded on.                                                                                                                         |
+| Player name                 | Include that player in the lineup, or leave them out.                                                                                                         |
+| Coffee cup (beside a name)  | Sit that player out, or bring them back. Several players can sit at once.                                                                                     |
+| Month / Year / All, arrows  | Stats for a month, a year, or all time, with that period's results by day. All time has no arrows.                                                            |
+| Settings                    | Roster and the Google Sheet connection.                                                                                                                       |
 
 Played and won for the day are in the results at the bottom.
 
