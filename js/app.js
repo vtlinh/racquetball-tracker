@@ -225,7 +225,7 @@ function dayGroup(day) {
   const standings = totals
     .map((r) => {
       const emoji = dayMark(r.player, stars, r.played);
-      return `<span class="standing">${markHtml(emoji)}<span class="who"><b>${esc(r.player)}</b> ${r.wins}-${r.losses}</span></span>`;
+      return `<span><b>${esc(r.player)}</b>${emoji ? ` ${emoji}` : ''} ${r.wins}-${r.losses}</span>`;
     })
     .join('');
   const body = history
