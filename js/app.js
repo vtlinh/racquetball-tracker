@@ -702,8 +702,9 @@ function rallyBall() {
       state = {
         x: triples ? minX + laneW * 0.4 : maxX * 0.46,
         y: maxY * 0.35,
-        vx: triples ? laneW * 0.9 : floor.clientWidth * 0.72,
-        vy: floor.clientHeight * 1.25,
+        // Singles and doubles cross a little slower. Triples keep the quicker pace.
+        vx: triples ? laneW * 0.9 : floor.clientWidth * 0.61,
+        vy: floor.clientHeight * (triples ? 1.25 : 1.06),
         squashedAt: 0,
         wall: 'right',
         sides,
@@ -744,8 +745,8 @@ function rallyBall() {
     }
     const k = squashAmount(state.squashedAt ? (now - state.squashedAt) / 1000 : 10);
     // Thin against the wall and wide along it, so the outline changes shape.
-    const flat = 1 - 0.46 * k;
-    const bulge = 1 + 0.58 * k;
+    const flat = 1 - 0.36 * k;
+    const bulge = 1 + 0.46 * k;
     const sideways = state.wall === 'left' || state.wall === 'right';
     // Plant the squish on the wall, then spring back onto the rally path as the ball rounds out.
     let x = state.x;
