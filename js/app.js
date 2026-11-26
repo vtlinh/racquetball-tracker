@@ -260,7 +260,7 @@ function sortStatsRows(rows) {
 function statsHeader() {
   return STATS_COLUMNS.map((col) => {
     const dir = statsSort?.key === col.key ? statsSort.dir : null;
-    const arrow = dir === 'asc' ? '^' : dir === 'desc' ? '↓' : '';
+    const arrow = dir === 'asc' ? '↑' : dir === 'desc' ? '↓' : '';
     const aria = dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none';
     return `<th data-sort="${col.key}" role="button" tabindex="0" aria-sort="${aria}">${esc(col.label)}${
       arrow ? `<span class="sort-dir" aria-hidden="true">${arrow}</span>` : ''
