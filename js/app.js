@@ -509,7 +509,7 @@ $('#addPlayerForm').onsubmit = (e) => {
   $('#newPlayer').value = '';
 };
 
-/** The ball rebounds off the walls and the names. The front wall is the right edge. */
+/** The ball stays between the teams and stops on the inner edge of each side's letters. */
 function rallyBall() {
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const trailLag = [4, 9, 15];
@@ -520,52 +520,11 @@ function rallyBall() {
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
   };
-  const bounceOff = (rect) => {
-    const r = state.r;
-    const cx = state.x + r;
-    const cy = state.y + r;
-    const closestX = Math.max(rect.left, Math.min(cx, rect.right));
-    const closestY = Math.max(rect.top, Math.min(cy, rect.bottom));
-    let nx = cx - closestX;
-    let ny = cy - closestY;
-    const inside = cx > rect.left && cx < rect.right && cy > rect.top && cy < rect.bottom;
-    const dist2 = nx * nx + ny * ny;
-    if (!inside && dist2 >= r * r) return;
-    let dist = Math.sqrt(dist2);
-    if (dist < 0.001) {
-      const dl = cx - rect.left;
-      const dr = rect.right - cx;
-      const dt = cy - rect.top;
-      const db = rect.bottom - cy;
-      const m = Math.min(dl, dr, dt, db);
-      if (m === dl) {
-        nx = -1;
-        ny = 0;
-      } else if (m === dr) {
-        nx = 1;
-        ny = 0;
-      } else if (m === dt) {
-        nx = 0;
-        ny = -1;
-      } else {
-        nx = 0;
-        ny = 1;
-      }
-      dist = 0;
-    } else {
-      nx /= dist;
-      ny /= dist;
-    }
-    const push = r - dist + 0.4;
-    state.x += nx * push;
-    state.y += ny * push;
-    const dot = state.vx * nx + state.vy * ny;
-    if (dot < 0) {
-      state.vx -= 2 * dot * nx;
-      state.vy -= 2 * dot * ny;
-      state.squash = 1;
-      state.wall = Math.abs(nx) > Math.abs(ny) ? (nx > 0 ? 'left' : 'right') : ny > 0 ? 'top' : 'bottom';
-    }
+  const textPad = (el) => {
+    if (el._textPad) return el._textPad;
+    const style = getComputedStyle(el);
+    el._textPad = { l: parseFloat(style.paddingLeft) || 0, r: parseFloat(style.paddingRight) || 0 };
+    return el._textPad;
   };
   const tick = (now) => {
     requestAnimationFrame(tick);
@@ -577,7 +536,34 @@ function rallyBall() {
     }
     const floor = ball.parentElement;
     const trails = [...floor.querySelectorAll('.ball-trail')];
-    const maxX = Math.max(0, floor.clientWidth - ball.offsetWidth);
+    const ballW = ball.offsetWidth;
+    const floorBox = floor.getBoundingClientRect();
+    const mid = floorBox.left + floor.clientWidth / 2;
+    // The name buttons pad the letters. The stop is the inner edge of those letters, for the full height of the court.
+    let laneLeft = 0;
+    let laneRight = floor.clientWidth;
+    let sawLeft = false;
+    let sawRight = false;
+    for (const el of floor.querySelectorAll('.name')) {
+      const b = el.getBoundingClientRect();
+      if (b.width < 1) continue;
+      const pad = textPad(el);
+      const left = b.left + pad.l - floorBox.left;
+      const right = b.right - pad.r - floorBox.left;
+      if ((b.left + b.right) / 2 < mid) {
+        laneLeft = Math.max(laneLeft, right);
+        sawLeft = true;
+      } else {
+        laneRight = Math.min(laneRight, left);
+        sawRight = true;
+      }
+    }
+    let minX = 0;
+    let maxX = Math.max(0, floor.clientWidth - ballW);
+    if (sawLeft && sawRight && laneRight - laneLeft >= ballW + 4) {
+      minX = laneLeft;
+      maxX = laneRight - ballW;
+    }
     const maxY = Math.max(0, floor.clientHeight - ball.offsetHeight);
     if (reduce) {
       place(ball, maxX * 0.5, maxY * 0.45);
@@ -593,30 +579,18 @@ function rallyBall() {
         vy: floor.clientHeight * 1.25,
         squash: 0,
         wall: 'right',
-        r: ball.offsetWidth / 2,
       };
       last = now;
     }
-    state.r = ball.offsetWidth / 2;
     const dt = Math.min(0.04, last ? (now - last) / 1000 : 0);
     last = now;
-    const floorBox = floor.getBoundingClientRect();
-    const obstacles = [...floor.querySelectorAll('.name, .win')].map((el) => {
-      const b = el.getBoundingClientRect();
-      return {
-        left: b.left - floorBox.left,
-        top: b.top - floorBox.top,
-        right: b.right - floorBox.left,
-        bottom: b.bottom - floorBox.top,
-      };
-    });
     const steps = Math.max(1, Math.ceil(dt / 0.008));
     const h = dt / steps;
     for (let i = 0; i < steps; i++) {
       state.x += state.vx * h;
       state.y += state.vy * h;
-      if (state.x <= 0) {
-        state.x = -state.x;
+      if (state.x <= minX) {
+        state.x = minX + (minX - state.x);
         state.vx = Math.abs(state.vx);
         state.squash = 1;
         state.wall = 'left';
@@ -637,8 +611,7 @@ function rallyBall() {
         state.squash = 1;
         state.wall = 'bottom';
       }
-      for (const rect of obstacles) bounceOff(rect);
-      state.x = Math.min(maxX, Math.max(0, state.x));
+      state.x = Math.min(maxX, Math.max(minX, state.x));
       state.y = Math.min(maxY, Math.max(0, state.y));
     }
     state.squash *= Math.exp(-dt * 18);
