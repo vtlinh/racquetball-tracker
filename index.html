@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=61" />
+    <link rel="stylesheet" href="css/styles.css?v=63" />
   </head>
   <body>
     <main>
@@ -88,7 +88,10 @@
       <p class="meal-hint">Score 5 is highest and picked most often.</p>
       <div id="mealWho"></div>
       <div id="mealList" class="roster"></div>
-      <button type="button" class="btn add-meal" id="addMealBtn" title="Add restaurant" data-icon="plus"></button>
+      <form id="mealForm" class="row">
+        <input id="newMeal" placeholder="Add restaurant" autocomplete="off" maxlength="40" />
+        <button class="btn" title="Add" data-icon="plus"></button>
+      </form>
     </dialog>
 
     <dialog id="placeDlg" class="sheet">
@@ -108,6 +111,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=61"></script>
+    <script type="module" src="js/app.js?v=63"></script>
   </body>
 </html>

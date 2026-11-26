@@ -732,7 +732,13 @@ $('#mealList').onclick = (e) => {
   const name = e.target.closest('[data-address]');
   if (name) openPlace(name.dataset.address);
 };
-$('#addMealBtn').onclick = () => openPlace('');
+$('#mealForm').onsubmit = (e) => {
+  e.preventDefault();
+  if (readOnly) return;
+  const n = $('#newMeal').value.trim();
+  if (n) S.setRestaurants(L.withRestaurant(S.getState().restaurants, n));
+  $('#newMeal').value = '';
+};
 $('#removeMealDlg').addEventListener('click', (e) => {
   const d = $('#removeMealDlg');
   const yes = e.target.closest('[data-remove="yes"]');
