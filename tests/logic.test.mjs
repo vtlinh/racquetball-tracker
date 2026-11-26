@@ -309,6 +309,18 @@ test('crown: most wins then fewest losses; poop: most losses then fewest wins; t
   // A 1-1, B 1-1, C 1-1, D 0-1, E 1-0: E has no losses; D lost once with no wins
   const h4 = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['C', 'E'], ['A', 'B'], 0, ['D'])];
   assert.deepEqual(L.dayStars(h4), { crown: 'E', poop: 'D' });
+  // E sat both games, so the marks stay with people who played: A 2-0, D 0-2.
+  const satAll = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['A', 'C'], ['B', 'D'], 0, ['E'])];
+  assert.deepEqual(L.dayStars(satAll), { crown: 'A', poop: 'D' });
+  // A made-up 0-game record with more wins and losses must not take either mark.
+  assert.deepEqual(
+    L.starsOf([
+      { player: 'A', played: 2, wins: 2, losses: 0 },
+      { player: 'B', played: 2, wins: 0, losses: 2 },
+      { player: 'C', played: 0, wins: 5, losses: 9 },
+    ]),
+    { crown: 'A', poop: 'B' },
+  );
   assert.deepEqual(L.dayStars([m(['A', 'B'], ['C', 'D'], 0)]), { crown: null, poop: null });
   assert.deepEqual(L.dayStars([]), { crown: null, poop: null });
 });
