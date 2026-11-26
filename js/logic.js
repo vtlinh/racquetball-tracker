@@ -35,7 +35,10 @@ export const modeOf = (sides) =>
   !sides ? '' : sides.length === 3 ? '3way' : sides[0].length === 2 ? '2v2' : '1v1';
 
 /** Points one player gains or loses for a match. Sitters are not on a side. */
-export const pointsFor = (m, won) => (won ? (modeOf(m.sides) === '3way' ? 1.5 : 1) : -1);
+export const pointsFor = (m, won) => {
+  if (won) return 1;
+  return modeOf(m.sides) === '3way' ? -0.5 : -1;
+};
 
 export const winnersOf = (m) => m.sides[m.win];
 export const losersOf = (m) => m.sides.filter((_, i) => i !== m.win).flat();

@@ -293,7 +293,7 @@ test('dayRows and aggregate produce the per-day rows and period totals', () => {
   );
 });
 
-test('points: +1/-1 in singles and doubles, +1.5/-1 in triples, sitters unchanged', () => {
+test('points: +1/-1 in singles and doubles, +1/-0.5 in triples, sitters unchanged', () => {
   const dbl = L.playerStats([
     {
       sides: [
@@ -322,10 +322,11 @@ test('points: +1/-1 in singles and doubles, +1.5/-1 in triples, sitters unchange
   const triple = [{ sides: [['A'], ['B'], ['C']], out: [], win: 0, t: 0 }];
   const cut = L.playerStats(triple);
   assert.equal(cut.A.score, L.pointsFor(triple[0], true));
-  assert.equal(L.pointsFor(triple[0], true), 1.5);
-  assert.equal(cut.A.score, 1.5);
-  assert.equal(cut.B.score, -1);
-  assert.equal(cut.C.score, -1);
+  assert.equal(L.pointsFor(triple[0], true), 1);
+  assert.equal(L.pointsFor(triple[0], false), -0.5);
+  assert.equal(cut.A.score, 1);
+  assert.equal(cut.B.score, -0.5);
+  assert.equal(cut.C.score, -0.5);
   assert.deepEqual(L.dayStars(triple), { crown: 'A', poop: null });
   assert.deepEqual(L.dayStars([...triple, { sides: [['B'], ['A'], ['C']], out: [], win: 0, t: 0 }]), {
     crown: null,
@@ -333,10 +334,10 @@ test('points: +1/-1 in singles and doubles, +1.5/-1 in triples, sitters unchange
   });
 
   assert.equal(L.formatScore(1), '+1');
-  assert.equal(L.formatScore(1.5), '+1.5');
+  assert.equal(L.formatScore(0.5), '+0.5');
   assert.equal(L.formatScore(3), '+3');
   assert.equal(L.formatScore(-1), '-1');
-  assert.equal(L.formatScore(-1.5), '-1.5');
+  assert.equal(L.formatScore(-0.5), '-0.5');
   assert.equal(L.formatScore(0), '0');
 });
 

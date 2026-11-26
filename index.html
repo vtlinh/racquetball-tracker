@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=24" />
+    <link rel="stylesheet" href="css/styles.css?v=25" />
   </head>
   <body>
     <main>
@@ -73,7 +73,7 @@
       <h3>Scoring</h3>
       <ul class="scoring">
         <li>Singles and doubles: +1 for each winner, −1 for each loser.</li>
-        <li>Triples: +1.5 for the winner, −1 for each of the other two.</li>
+        <li>Triples: +1 for the winner, −0.5 for each of the other two.</li>
         <li>Sitting out does not change the score.</li>
         <li>The crown goes to the highest score and the poop to the lowest. A tie gets neither.</li>
       </ul>
@@ -85,6 +85,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=24"></script>
+    <script type="module" src="js/app.js?v=25"></script>
   </body>
 </html>
