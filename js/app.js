@@ -86,7 +86,16 @@ function renderCourt(live) {
   });
   put(
     el,
-    `<div class="teams" data-sides="${m.sides.length}">${teams.join('<div class="vs"><span>vs</span></div>')}</div>`,
+    `<div class="court-floor">
+      <span class="court-line service"></span>
+      <span class="court-line short"></span>
+      <span class="court-line receive"></span>
+      <span class="box-line a"></span>
+      <span class="box-line b"></span>
+      <span class="box-line c"></span>
+      <span class="box-line d"></span>
+      <div class="teams" data-sides="${m.sides.length}">${teams.join('')}</div>
+    </div>`,
   );
 }
 
