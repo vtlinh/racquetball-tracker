@@ -447,7 +447,7 @@ test('dayRows and aggregate produce the per-day rows and period totals', () => {
   );
 });
 
-test('points: +1/-1 in singles, +0.5/-0.5 in doubles, +1/-0.5 in triples, sitters unchanged', () => {
+test('points: +4/-4 in singles, +3/-3 in doubles, +6/-3 in triples, sitters unchanged', () => {
   const dbl = L.playerStats([
     {
       sides: [
@@ -459,28 +459,28 @@ test('points: +1/-1 in singles, +0.5/-0.5 in doubles, +1/-0.5 in triples, sitter
       t: 0,
     },
   ]);
-  assert.equal(dbl.A.score, 0.5);
-  assert.equal(dbl.B.score, 0.5);
-  assert.equal(dbl.C.score, -0.5);
-  assert.equal(dbl.D.score, -0.5);
+  assert.equal(dbl.A.score, 3);
+  assert.equal(dbl.B.score, 3);
+  assert.equal(dbl.C.score, -3);
+  assert.equal(dbl.D.score, -3);
   assert.equal(dbl.E.score, 0);
   assert.equal(dbl.E.played, 0);
 
   const singleMatch = { sides: [['A'], ['B']], out: [], win: 1, t: 0 };
   const single = L.playerStats([singleMatch]);
-  assert.equal(single.A.score, -1);
-  assert.equal(single.B.score, 1);
-  assert.equal(L.pointsFor(singleMatch, false), -1);
-  assert.equal(L.pointsFor(singleMatch, true), 1);
+  assert.equal(single.A.score, -4);
+  assert.equal(single.B.score, 4);
+  assert.equal(L.pointsFor(singleMatch, false), -4);
+  assert.equal(L.pointsFor(singleMatch, true), 4);
 
   const triple = [{ sides: [['A'], ['B'], ['C']], out: [], win: 0, t: 0 }];
   const cut = L.playerStats(triple);
   assert.equal(cut.A.score, L.pointsFor(triple[0], true));
-  assert.equal(L.pointsFor(triple[0], true), 1);
-  assert.equal(L.pointsFor(triple[0], false), -0.5);
-  assert.equal(cut.A.score, 1);
-  assert.equal(cut.B.score, -0.5);
-  assert.equal(cut.C.score, -0.5);
+  assert.equal(L.pointsFor(triple[0], true), 6);
+  assert.equal(L.pointsFor(triple[0], false), -3);
+  assert.equal(cut.A.score, 6);
+  assert.equal(cut.B.score, -3);
+  assert.equal(cut.C.score, -3);
   assert.deepEqual(L.dayStars(triple), { crown: 'A', poop: null });
   assert.deepEqual(L.dayStars([...triple, { sides: [['B'], ['A'], ['C']], out: [], win: 0, t: 0 }]), {
     crown: null,
@@ -502,21 +502,21 @@ test('crown is the unique high score and poop is the unique low score', () => {
     m(['A', 'C'], ['B', 'E'], 0, ['D']),
     m(['A', 'E'], ['C', 'D'], 1, ['B']),
   ];
-  // Scores: A +0.5, B 0, C +0.5, D 0, E -1. The high score is tied, so no crown.
+  // Scores: A +3, B 0, C +3, D 0, E -6. The high score is tied, so no crown.
   assert.deepEqual(L.dayStars(h), { crown: null, poop: 'E' });
-  // Scores: A +1, B -0.5, C +0.5, D +0.5, E -1.5.
+  // Scores: A +6, B -3, C +3, D +3, E -9.
   assert.deepEqual(L.dayStars([...h, m(['A', 'D'], ['B', 'E'], 0, ['C'])]), { crown: 'A', poop: 'E' });
-  // Scores: A +1, B -0.5, C +0.5, D -1.5, E +0.5.
+  // Scores: A +6, B -3, C +3, D -9, E +3.
   const h3 = [
     m(['A', 'B'], ['C', 'D'], 0),
     m(['A', 'C'], ['B', 'D'], 0),
     m(['C', 'E'], ['B', 'D'], 0, ['A']),
   ];
   assert.deepEqual(L.dayStars(h3), { crown: 'A', poop: 'D' });
-  // Scores: A 0, B 0, C 0, D -0.5, E +0.5.
+  // Scores: A 0, B 0, C 0, D -3, E +3.
   const h4 = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['C', 'E'], ['A', 'B'], 0, ['D'])];
   assert.deepEqual(L.dayStars(h4), { crown: 'E', poop: 'D' });
-  // E sat both games. Scores among those who played: A +1, B 0, C 0, D -1.
+  // E sat both games. Scores among those who played: A +6, B 0, C 0, D -6.
   const satAll = [m(['A', 'B'], ['C', 'D'], 0, ['E']), m(['A', 'C'], ['B', 'D'], 0, ['E'])];
   assert.deepEqual(L.dayStars(satAll), { crown: 'A', poop: 'D' });
   // A record with no games played cannot take a mark, even with a wild win-loss line.
