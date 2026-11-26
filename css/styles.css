@@ -607,9 +607,6 @@ p.stats.empty {
   padding: 6px 6px 8px 10px;
   font-size: 13px;
 }
-.day summary .btn.sm {
-  margin-left: auto;
-}
 .standings {
   flex-basis: 100%;
   display: flex;
