@@ -39,7 +39,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 | All / Year / Month, arrows | Stats for all time, a year, or a month, with that period's results by day. Opens on All, and remembers the last choice on this device. All time has no arrows. |
 | Settings                   | Roster, and how scoring works.                                                                                                                                 |
 
-Each day in the results shows the score. Played and won are in the stats table, which sorts players by score.
+Each day in the results shows the score. Played and won are in the stats table. Names are A–Z until you tap a column: the first tap puts the higher value on top, the next tap reverses it, and a third tap returns to A–Z. The column shows ^ or a down arrow for the direction.
 
 ## Google Sheet storage
 

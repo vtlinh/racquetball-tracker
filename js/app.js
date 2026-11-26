@@ -42,6 +42,8 @@ function rememberStatsScope(scope) {
 let selected = null;
 let statsScope = loadStatsScope();
 let statsOffset = 0;
+/** null keeps names A–Z. 'desc' puts the higher value first. */
+let statsSort = null;
 const dayOpen = new Map();
 
 /** Only touch the DOM when markup changed, so a background re-render can't swallow a tap mid-press. */
@@ -216,6 +218,52 @@ const periodDays = () => {
   return prefix ? days.filter((d) => d.date.startsWith(prefix)) : days;
 };
 
+const STATS_COLUMNS = [
+  { key: 'player', label: 'Player' },
+  { key: 'played', label: 'Played' },
+  { key: 'wins', label: 'Won' },
+  { key: 'pct', label: 'Win %' },
+  { key: 'score', label: 'Score' },
+];
+
+function sortStatsRows(rows) {
+  const sorted = [...rows];
+  const byPlayer = (a, b) => byName(a.player, b.player);
+  if (!statsSort) return sorted.sort(byPlayer);
+  const { key, dir } = statsSort;
+  const sign = dir === 'asc' ? 1 : -1;
+  const value = (row) => {
+    if (key === 'played') return row.played;
+    if (key === 'wins') return row.wins;
+    if (key === 'pct') return L.winPct(row);
+    return row.score;
+  };
+  return sorted.sort((a, b) => {
+    if (key === 'player') return sign * byPlayer(a, b);
+    const diff = value(a) - value(b);
+    return diff ? sign * diff : byPlayer(a, b);
+  });
+}
+
+function statsHeader() {
+  return STATS_COLUMNS.map((col) => {
+    const dir = statsSort?.key === col.key ? statsSort.dir : null;
+    const arrow = dir === 'asc' ? '^' : dir === 'desc' ? '↓' : '';
+    const aria = dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none';
+    return `<th data-sort="${col.key}" role="button" tabindex="0" aria-sort="${aria}">${esc(col.label)}${
+      arrow ? `<span class="sort-dir" aria-hidden="true">${arrow}</span>` : ''
+    }</th>`;
+  }).join('');
+}
+
+function cycleStatsSort(key) {
+  if (statsSort?.key !== key) statsSort = { key, dir: 'desc' };
+  else if (statsSort.dir === 'desc') statsSort = { key, dir: 'asc' };
+  else statsSort = null;
+  renderStats();
+  document.querySelector(`#statsBody th[data-sort="${CSS.escape(key)}"]`)?.focus();
+}
+
 function renderStats() {
   document
     .querySelectorAll('#statsSeg button')
@@ -226,14 +274,12 @@ function renderStats() {
   $('#periodLabel').textContent = period().label;
   const days = periodDays();
 
-  const agg = L.aggregate(days.flatMap((d) => d.rows)).sort(
-    (a, b) => b.score - a.score || byName(a.player, b.player),
-  );
+  const agg = sortStatsRows(L.aggregate(days.flatMap((d) => d.rows)));
   put(
     $('#statsBody'),
     agg.length
       ? `<table class="stats">
-          <thead><tr><th>Player</th><th>Played</th><th>Won</th><th>Win %</th><th>Score</th></tr></thead>
+          <thead><tr>${statsHeader()}</tr></thead>
           <tbody>${agg
             .map(
               (r) =>
@@ -507,6 +553,20 @@ $('#statsSeg').onclick = (e) => {
 };
 $('#prevPeriod').onclick = () => (statsOffset--, renderStats());
 $('#nextPeriod').onclick = () => (statsOffset++, renderStats());
+
+function statsSortFrom(event) {
+  const cell = event.target.closest('#statsBody th, #statsBody td');
+  if (!cell?.closest('table.stats')) return;
+  const key = cell.closest('table').tHead.rows[0].cells[cell.cellIndex]?.dataset.sort;
+  if (key) cycleStatsSort(key);
+}
+$('#statsBody').addEventListener('click', statsSortFrom);
+$('#statsBody').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  if (!e.target.closest('th[data-sort]')) return;
+  e.preventDefault();
+  statsSortFrom(e);
+});
 
 $('#rosterList').onclick = (e) => {
   const b = e.target.closest('[data-remove]');
