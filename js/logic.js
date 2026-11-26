@@ -144,6 +144,18 @@ function weightParts(entry, picks) {
   return [votes.reduce((sum, w) => sum + w, 0), votes.length];
 }
 
+/** The weight used for ranking: the average of personal picks, or the list weight when nobody picked. */
+export function restaurantWeight(entry, picks = {}) {
+  const [num, den] = weightParts(entry, cleanMealPicks(picks, [entry]));
+  return num / den;
+}
+
+/** One decimal only when the average is not a whole number. */
+export function formatWeight(n) {
+  const v = Math.round(+n * 10) / 10;
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
 /** Highest weight first. Equal weights are ordered by name. */
 export function rankedRestaurants(list, picks = {}) {
   const entries = cleanRestaurants(list);

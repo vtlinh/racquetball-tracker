@@ -842,40 +842,31 @@ dialog::backdrop {
 }
 .meal-item {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-  min-height: 0;
-  padding: 8px 0;
-  border-top: 1px solid var(--line);
-}
-.meal-item-head,
-.meal-pick {
-  display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 40px;
+  padding: 4px 0;
+  border-top: 1px solid var(--line);
 }
-.meal-item .meal-name,
-.meal-pick .who {
+.meal-item .meal-name {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   font-weight: 700;
+}
+.meal-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.meal-pick {
-  padding-left: 8px;
-}
-.meal-pick.mine .who {
-  color: var(--gold);
-}
-.meal-fixed {
-  width: 58px;
-  text-align: center;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.meal-avg {
+  flex: none;
   color: var(--muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 .roster .x {
   display: grid;
