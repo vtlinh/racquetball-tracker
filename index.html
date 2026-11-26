@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=57" />
+    <link rel="stylesheet" href="css/styles.css?v=58" />
   </head>
   <body>
     <main>
@@ -72,6 +72,14 @@
       </div>
     </dialog>
 
+    <dialog id="removeMealDlg" class="ask">
+      <p class="ask-q">Remove <strong id="removeMealName"></strong>?</p>
+      <div class="ask-row">
+        <button type="button" class="btn text" data-remove="no">No</button>
+        <button type="button" class="btn text" data-remove="yes">Yes</button>
+      </div>
+    </dialog>
+
     <dialog id="mealDlg" class="sheet">
       <header class="sheet-head">
         <strong>Restaurants</strong>
@@ -92,6 +100,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=57"></script>
+    <script type="module" src="js/app.js?v=58"></script>
   </body>
 </html>

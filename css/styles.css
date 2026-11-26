@@ -793,6 +793,12 @@ dialog.ask p {
   font-weight: 700;
   text-align: center;
 }
+dialog.ask p.ask-q {
+  font-weight: 500;
+}
+dialog.ask strong {
+  font-weight: 800;
+}
 dialog.ask .ask-row {
   display: flex;
   justify-content: flex-end;

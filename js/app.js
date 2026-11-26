@@ -710,8 +710,20 @@ $('#mealList').onclick = (e) => {
   if (readOnly) return;
   const b = e.target.closest('[data-remove-meal]');
   if (!b) return;
-  S.setRestaurants(L.cleanRestaurants(S.getState().restaurants).filter((r) => r.name !== b.dataset.removeMeal));
+  $('#removeMealName').textContent = b.dataset.removeMeal;
+  $('#removeMealDlg').showModal();
 };
+$('#removeMealDlg').addEventListener('click', (e) => {
+  const d = $('#removeMealDlg');
+  const yes = e.target.closest('[data-remove="yes"]');
+  const no = e.target.closest('[data-remove="no"]');
+  const r = d.getBoundingClientRect();
+  const outside = e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
+  if (!yes && !no && !outside) return;
+  const name = $('#removeMealName').textContent;
+  d.close();
+  if (yes) S.setRestaurants(L.withoutRestaurant(S.getState().restaurants, name));
+});
 $('#mealWho').addEventListener('change', (e) => {
   if (readOnly) return;
   const sel = e.target.closest('select[data-claim]');
@@ -735,7 +747,7 @@ $('#mealForm').onsubmit = (e) => {
   e.preventDefault();
   if (readOnly) return;
   const n = $('#newMeal').value.trim();
-  if (n) S.setRestaurants([...L.cleanRestaurants(S.getState().restaurants), { name: n, weight: 1 }]);
+  if (n) S.setRestaurants(L.withRestaurant(S.getState().restaurants, n));
   $('#newMeal').value = '';
 };
 
