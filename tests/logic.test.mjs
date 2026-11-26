@@ -222,6 +222,20 @@ test('a restaurant keeps the address picked for it, and maps opens there', () =>
     dupes.map((p) => p.address),
     ['10 Other St, Reston, VA', '163 Old River Road, Edgewater, New Jersey'],
   );
+  const google = L.placesFromGoogle([
+    { name: ' Obaltan ', address: ' Abbott Boulevard, Fort Lee, NJ, USA ', distanceMeters: 2100, placeId: 'a' },
+    { name: 'Obaltan', address: 'Abbott Boulevard, Fort Lee, NJ, USA', distanceMeters: 2200, placeId: 'a2' },
+    { name: 'Other', placeId: 'b' },
+  ]);
+  assert.deepEqual(
+    google.map((p) => p.name),
+    ['Obaltan', 'Other'],
+  );
+  assert.equal(google[0].address, 'Abbott Boulevard, Fort Lee, NJ, USA');
+  assert.equal(google[0].placeId, 'a');
+  assert.equal(google[0].km, 2.1);
+  assert.equal(L.formatMiles(google[0].km), '1.3 mi');
+  assert.equal(google[1].km, undefined);
 });
 
 test('restaurants are ordered by weight, then by name', () => {

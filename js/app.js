@@ -1,6 +1,7 @@
 import * as L from './logic.js';
 import * as S from './store.js';
 import { icon, hydrateIcons } from './icons.js';
+import { GOOGLE_MAPS_API_KEY } from './config.js';
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) =>
@@ -766,8 +767,58 @@ let placeEdit = '';
 let placeHere = null;
 let placeAsked = false;
 let placeTimer = 0;
-let placeAbort = null;
 let placeSeq = 0;
+let placeToken = null;
+let placePicking = false;
+let mapsPlaces = null;
+
+const PLACE_TYPES = ['restaurant', 'cafe', 'bar', 'bakery', 'meal_takeaway'];
+
+function loadPlacesLibrary() {
+  if (mapsPlaces) return mapsPlaces;
+  mapsPlaces = new Promise((resolve, reject) => {
+    const fail = (error) => {
+      mapsPlaces = null;
+      reject(error);
+    };
+    const timer = setTimeout(() => fail(new Error('maps')), 8000);
+    const params = new URLSearchParams({
+      key: GOOGLE_MAPS_API_KEY,
+      v: 'weekly',
+      libraries: 'places',
+      loading: 'async',
+      callback: '__rbMaps',
+    });
+    window.__rbMaps = () => {
+      clearTimeout(timer);
+      delete window.__rbMaps;
+      const ready = window.google?.maps?.places?.AutocompleteSuggestion
+        ? Promise.resolve(window.google.maps.places)
+        : window.google?.maps?.importLibrary?.('places');
+      Promise.resolve(ready).then(
+        (places) => (places?.AutocompleteSuggestion ? resolve(places) : fail(new Error('places'))),
+        fail,
+      );
+    };
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?${params}`;
+    script.async = true;
+    script.onerror = () => {
+      clearTimeout(timer);
+      fail(new Error('maps'));
+    };
+    document.head.append(script);
+  });
+  return mapsPlaces;
+}
+
+function predictionText(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value.text === 'string') return value.text;
+  const text = value.toString?.();
+  return text && text !== '[object Object]' ? text : '';
+}
 
 function askLocation() {
   if (placeAsked || !navigator.geolocation) return;
@@ -786,6 +837,8 @@ function askLocation() {
 function openPlace(name) {
   if (readOnly) return;
   placeEdit = name || '';
+  placeToken = null;
+  placePicking = false;
   $('#placeTitle').textContent = placeEdit || 'Add restaurant';
   $('#placeQuery').value = placeEdit;
   $('#placeSuggest').innerHTML = '';
@@ -797,18 +850,64 @@ function openPlace(name) {
   if (placeEdit.length >= 2) searchPlaces(placeEdit);
 }
 
-function pickPlace(place) {
-  const list = S.getState().restaurants;
-  const next = placeEdit ? L.updateRestaurantAddress(list, placeEdit, place) : L.withRestaurant(list, place);
-  S.setRestaurants(next);
-  placeEdit = '';
-  $('#placeDlg').close();
+function latLng(point) {
+  if (!point) return {};
+  const lat = typeof point.lat === 'function' ? point.lat() : point.lat;
+  const lng = typeof point.lng === 'function' ? point.lng() : point.lng;
+  return { lat, lng };
 }
 
-function renderPlaceSuggestions(places) {
+async function resolvePlace(place) {
+  const chosen = { name: place.name, address: place.address };
+  const prediction = place.prediction;
+  if (!prediction?.toPlace) return chosen;
+  try {
+    const detail = prediction.toPlace();
+    await detail.fetchFields({ fields: ['formattedAddress', 'location'] });
+    const address = String(detail.formattedAddress || '').trim();
+    if (address) chosen.address = address;
+    const point = latLng(detail.location);
+    if (Number.isFinite(point.lat) && Number.isFinite(point.lng)) {
+      chosen.lat = point.lat;
+      chosen.lng = point.lng;
+    }
+    placeToken = null;
+  } catch {
+    // The suggestion text is enough to save when details do not load.
+  }
+  return chosen;
+}
+
+async function pickPlace(place) {
+  if (placePicking) return;
+  placePicking = true;
+  $('#placeSuggest').innerHTML = '<p class="muted">Saving…</p>';
+  try {
+    const chosen = await resolvePlace(place);
+    if (!chosen.address) {
+      renderPlaceSuggestions([], 'That place has no address');
+      return;
+    }
+    const list = S.getState().restaurants;
+    const next = placeEdit ? L.updateRestaurantAddress(list, placeEdit, chosen) : L.withRestaurant(list, chosen);
+    S.setRestaurants(next);
+    placeEdit = '';
+    $('#placeDlg').close();
+  } finally {
+    placePicking = false;
+  }
+}
+
+function renderPlaceSuggestions(places, note) {
   const box = $('#placeSuggest');
+  if (note) {
+    box.innerHTML = `<p class="muted">${esc(note)}</p>`;
+    box._places = [];
+    return;
+  }
   if (!places.length) {
     box.innerHTML = '<p class="muted">No matches</p>';
+    box._places = [];
     return;
   }
   box.innerHTML = places
@@ -822,44 +921,42 @@ function renderPlaceSuggestions(places) {
   box._places = places;
 }
 
-async function fetchPhoton(query, here, bounded, signal) {
-  const url = new URL('https://photon.komoot.io/api/');
-  url.searchParams.set('q', query);
-  url.searchParams.set('limit', '8');
-  url.searchParams.set('lang', 'en');
-  if (here) {
-    url.searchParams.set('lat', String(here.lat));
-    url.searchParams.set('lon', String(here.lng));
-    if (bounded) {
-      const dLat = 0.45;
-      const dLng = 0.45 / Math.max(0.2, Math.cos((here.lat * Math.PI) / 180));
-      url.searchParams.set(
-        'bbox',
-        [here.lng - dLng, here.lat - dLat, here.lng + dLng, here.lat + dLat].map((n) => n.toFixed(4)).join(','),
-      );
-    }
-  }
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error(String(res.status));
-  const data = await res.json();
-  return data.features || [];
-}
-
 async function searchPlaces(query) {
   const seq = ++placeSeq;
-  placeAbort?.abort();
-  const ctrl = new AbortController();
-  placeAbort = ctrl;
   const here = placeHere;
   try {
-    let features = await fetchPhoton(query, here, true, ctrl.signal);
+    const placesLib = await loadPlacesLibrary();
     if (seq !== placeSeq) return;
-    if (here && !features.length) features = await fetchPhoton(query, here, false, ctrl.signal);
+    if (!placeToken) placeToken = new placesLib.AutocompleteSessionToken();
+    const request = {
+      input: query,
+      sessionToken: placeToken,
+      includedPrimaryTypes: PLACE_TYPES,
+      includedRegionCodes: ['us'],
+      language: 'en',
+      region: 'us',
+    };
+    if (here) {
+      request.origin = here;
+      request.locationBias = { center: here, radius: 50000 };
+    }
+    const { suggestions } = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
     if (seq !== placeSeq) return;
-    renderPlaceSuggestions(L.placesFromPhoton(features, here));
-  } catch (err) {
-    if (err?.name === 'AbortError' || seq !== placeSeq) return;
-    renderPlaceSuggestions([]);
+    const predictions = (suggestions || []).map((s) => s.placePrediction).filter(Boolean);
+    const byId = new Map(predictions.map((p) => [p.placeId, p]));
+    const places = L.placesFromGoogle(
+      predictions.map((p) => ({
+        name: predictionText(p.mainText) || predictionText(p.text).split(',')[0],
+        address: predictionText(p.secondaryText),
+        distanceMeters: p.distanceMeters,
+        placeId: p.placeId,
+      })),
+    );
+    for (const place of places) place.prediction = byId.get(place.placeId);
+    renderPlaceSuggestions(places);
+  } catch {
+    if (seq !== placeSeq) return;
+    renderPlaceSuggestions([], 'Place search failed');
   }
 }
 
@@ -868,7 +965,6 @@ $('#placeQuery').addEventListener('input', () => {
   clearTimeout(placeTimer);
   if (q.length < 2) {
     placeSeq += 1;
-    placeAbort?.abort();
     $('#placeSuggest').innerHTML = '';
     return;
   }
