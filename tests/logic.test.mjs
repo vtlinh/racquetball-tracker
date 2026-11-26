@@ -235,6 +235,16 @@ test('a restaurant keeps the address picked for it, and maps opens there', () =>
   assert.equal(google[0].placeId, 'a');
   assert.equal(google[0].km, 2.1);
   assert.equal(L.formatMiles(google[0].km), '1.3 mi');
+  const fromGym = L.placesFromPhoton(
+    [
+      {
+        properties: { name: 'Obaltan', housenumber: '799', street: 'Abbott Blvd', city: 'Fort Lee', state: 'NJ' },
+        geometry: { coordinates: [-73.982913, 40.831492] },
+      },
+    ],
+    L.GYM,
+  );
+  assert.equal(L.formatMiles(fromGym[0].km), '6.7 mi');
   assert.equal(L.placeCity('799 Abbott Blvd, Fort Lee, NJ 07024, USA'), 'Fort Lee');
   assert.equal(L.placeCity('163 Old River Road, Edgewater, New Jersey'), 'Edgewater');
   assert.equal(L.placeCity('Abbott Boulevard, Fort Lee, NJ, USA'), 'Fort Lee');

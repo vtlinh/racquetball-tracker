@@ -3,6 +3,9 @@
 export const DEFAULT_ROSTER = ['Rick', 'Leo', 'Linh', 'Nate', 'Doug'];
 export const MAX_ON_COURT = 4;
 
+/** 24 Hour Fitness, 260 Route 4, Paramus. Restaurant distance is measured from here. */
+export const GYM = { lat: 40.913763, lng: -74.049378 };
+
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 const EASTERN = 'America/New_York';
