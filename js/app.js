@@ -594,7 +594,10 @@ $('#shuffleBtn').onclick = () => {
   selected = null;
   S.reshuffle();
 };
-$('#readBtn').onclick = () => setReadOnly(!readOnly);
+$('#readBtn').onclick = () => {
+  if (readOnly && !confirm('Leave read only and allow edits?')) return;
+  setReadOnly(!readOnly);
+};
 
 $('#statsSeg').onclick = (e) => {
   const b = e.target.closest('button');
