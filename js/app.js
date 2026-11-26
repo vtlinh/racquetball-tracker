@@ -251,14 +251,18 @@ function resultTime(m) {
 }
 
 function resultLine(m) {
-  const win = m.sides[m.win].join(' & ');
+  const withDelta = (names, won) =>
+    names
+      .map((p) => `${esc(p)} <span class="delta">(${L.formatScore(L.pointsFor(m, won))})</span>`)
+      .join(' & ');
+  const win = withDelta(m.sides[m.win], true);
   const lose = m.sides
     .filter((_, j) => j !== m.win)
-    .map((t) => t.join(' & '))
+    .map((t) => withDelta(t, false))
     .join(', ');
   const out = m.out?.length ? `<span class="muted"> · ${esc(m.out.join(', '))} sat</span>` : '';
   const when = resultTime(m);
-  return `${when}${when ? ' ' : ''}<span class="w">${esc(win)}</span> beat ${esc(lose)}${out}`;
+  return `${when}${when ? ' ' : ''}<span class="w">${win}</span> beat ${lose}${out}`;
 }
 
 function dayGroup(day) {

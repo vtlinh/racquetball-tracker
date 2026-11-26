@@ -34,6 +34,9 @@ export function newSession() {
 export const modeOf = (sides) =>
   !sides ? '' : sides.length === 3 ? '3way' : sides[0].length === 2 ? '2v2' : '1v1';
 
+/** Points one player gains or loses for a match. Sitters are not on a side. */
+export const pointsFor = (m, won) => (won ? (modeOf(m.sides) === '3way' ? 1.5 : 1) : -1);
+
 export const winnersOf = (m) => m.sides[m.win];
 export const losersOf = (m) => m.sides.filter((_, i) => i !== m.win).flat();
 export const onCourt = (match) => (match ? match.sides.flat() : []);
@@ -47,18 +50,14 @@ export function playerStats(history, names = []) {
   const get = (n) => (s[n] ??= { played: 0, wins: 0, losses: 0, out: 0, score: 0 });
   names.forEach(get);
   for (const m of history) {
-    const winPoints = modeOf(m.sides) === '3way' ? 1.5 : 1;
     m.sides.forEach((side, i) =>
       side.forEach((p) => {
         const r = get(p);
+        const won = i === m.win;
         r.played++;
-        if (i === m.win) {
-          r.wins++;
-          r.score += winPoints;
-        } else {
-          r.losses++;
-          r.score -= 1;
-        }
+        if (won) r.wins++;
+        else r.losses++;
+        r.score += pointsFor(m, won);
       }),
     );
     (m.out || []).forEach((p) => get(p).out++);

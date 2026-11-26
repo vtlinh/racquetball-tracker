@@ -291,19 +291,28 @@ main {
 }
 .teams[data-sides='2'] {
   grid-template-columns: 37.5% 25% 37.5%;
+  grid-template-rows: 1fr;
 }
+/* Both sides share the one row. Column 3 is placed first, and without an
+   explicit row the other side wraps underneath and gets clipped. */
 .teams[data-sides='2'] .team:nth-child(1) {
   grid-column: 3;
+  grid-row: 1;
 }
 .teams[data-sides='2'] .team:nth-child(2) {
   grid-column: 1;
-  flex-direction: row-reverse;
-}
-.teams[data-sides='3'] .team:nth-child(1) {
+  grid-row: 1;
   flex-direction: row-reverse;
 }
 .teams[data-sides='3'] {
   grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr;
+}
+.teams[data-sides='3'] .team {
+  grid-row: 1;
+}
+.teams[data-sides='3'] .team:nth-child(1) {
+  flex-direction: row-reverse;
 }
 .team {
   min-width: 0;
@@ -677,6 +686,10 @@ p.stats.empty {
 }
 .results .w {
   font-weight: 700;
+}
+.results .delta {
+  color: var(--muted);
+  font-weight: 500;
 }
 .legacy {
   margin: 0;
