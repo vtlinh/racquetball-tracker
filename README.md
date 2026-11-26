@@ -37,7 +37,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 | Player name                | Include that player in the lineup, or leave them out.                                                                                                          |
 | Coffee cup (beside a name) | Sit that player out, or bring them back. Several players can sit at once.                                                                                      |
 | All / Year / Month, arrows | Stats for all time, a year, or a month, with that period's results by day. Opens on All, and remembers the last choice on this device. All time has no arrows. |
-| Read only                  | Hides the edit buttons and ignores writes: wins, swaps, sit-outs, check-ins, shuffles, undo, redo, and result edits. Tap it again to edit. The choice is remembered on this device. |
+| Read only                  | Hides the edit buttons and ignores writes: wins, swaps, sit-outs, check-ins, shuffles, undo, redo, and result edits. Tap it again and confirm to edit. The choice is remembered on this device. |
 
 Each day in the results shows the score. Played and won are in the stats table. Names are A–Z until you tap a column. Tapping Player lists Z–A, and tapping it again returns to A–Z. On Played, Won, Win %, and Score, the first tap puts the higher value on top, the next tap reverses it, and a third tap returns to A–Z. A down arrow marks higher-first, and an up arrow marks the reverse on those columns.
 
