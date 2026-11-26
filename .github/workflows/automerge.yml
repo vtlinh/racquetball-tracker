@@ -30,7 +30,13 @@ jobs:
           HEAD: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          pr=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/pulls" --jq '.[0].number')
+          # The /actions/runs/{id}/pulls route returns 404 for these runs.
+          # The run payload already lists the pull request, and the commit
+          # lookup covers a run whose payload has an empty list.
+          pr=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}" --jq '.pull_requests[0].number // empty')
+          if [ -z "${pr}" ] || [ "${pr}" = "null" ]; then
+            pr=$(gh api "repos/${REPO}/commits/${HEAD}/pulls" --jq '.[0].number // empty')
+          fi
           if [ -z "${pr}" ] || [ "${pr}" = "null" ]; then
             echo "No pull request is attached to this run."
             exit 0
