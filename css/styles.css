@@ -786,6 +786,15 @@ dialog::backdrop {
   border: 1px solid var(--line);
   background: var(--surface);
 }
+.scoring {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.scoring li + li {
+  margin-top: 6px;
+}
 details.small {
   margin-top: 10px;
 }

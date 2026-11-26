@@ -20,7 +20,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 - Every result is saved under its date as soon as you tap the trophy beside a team. There's no end-of-day step: each day's rows in the sheet are rewritten automatically whenever that day changes.
 - The day picker at the top (‹ Today ›) chooses which day new results go to. Today is the Eastern Time date, so an evening game stays on that day. The arrows move between days that already have results, skipping empty ones. Tap the date to jump to any day, including one with no games yet, or use the pencil on a day in the results list. A past day is shown in gold.
-- Below the All/Year/Month stats, results are grouped by day, newest day first and newest result first. Only today starts expanded. Opening a day collapses the others, so one day is open at a time. Each result shows the time it was recorded, in Eastern Time, as `HH:MM`. Each day shows every player's wins-losses and score. Use ⇄ to change a result's winner and × to delete it.
+- Below the All/Year/Month stats, results are grouped by day, newest day first and newest result first. Only today starts expanded. Opening a day collapses the others, so one day is open at a time. Each result shows the time it was recorded, in Eastern Time, as `HH:MM`. Each day shows every player's score. Use ⇄ to change a result's winner and × to delete it.
 - Singles and doubles score +1 for each winner and −1 for each loser. A triple scores +1.5 for the winner and −1 for each of the other two. Sitting out does not change the score.
 - 👑 goes to the day's highest score and 💩 to the lowest. A tie for either gets nobody. On the player row the mark sits above that player's name. In a day's history it sits beside the name. Only a player who played at least one game can receive one.
 
@@ -36,9 +36,9 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 | Player name                | Include that player in the lineup, or leave them out.                                                                                                          |
 | Coffee cup (beside a name) | Sit that player out, or bring them back. Several players can sit at once.                                                                                      |
 | All / Year / Month, arrows | Stats for all time, a year, or a month, with that period's results by day. Opens on All, and remembers the last choice on this device. All time has no arrows. |
-| Settings                   | Roster.                                                                                                                                                        |
+| Settings                   | Roster, and how scoring works.                                                                                                                                 |
 
-Played, won, and score for the day are in the results at the bottom. The stats table sorts players by score.
+Each day in the results shows the score. Played and won are in the stats table, which sorts players by score.
 
 ## Google Sheet storage
 
