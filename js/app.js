@@ -266,7 +266,9 @@ function resultLine(m) {
   const out = m.out?.length ? `<span class="muted"> · ${esc(m.out.join(', '))} sat</span>` : '';
   const when = resultTime(m);
   const winners = `${when}${when ? ' ' : ''}<span class="w">${win}</span>`;
-  return `<span class="res-line">${winners}</span><span class="res-line">beat ${lose}${out}</span>`;
+  const beaten = `beat ${lose}${out}`;
+  if (m.sides.length === 3) return `<span class="res-line">${winners} ${beaten}</span>`;
+  return `<span class="res-line">${winners}</span><span class="res-line">${beaten}</span>`;
 }
 
 function dayGroup(day) {
