@@ -34,6 +34,7 @@ let sync = { status: API_URL ? 'idle' : 'local', error: '' };
 function blank() {
   return {
     roster: [...L.DEFAULT_ROSTER],
+    restaurants: [],
     live: blankLive(),
     log: {},
     undo: [],
@@ -300,6 +301,21 @@ export function allDays() {
 
 // ---- settings -----------------------------------------------------------------
 
+export function gameDates() {
+  const days = new Set();
+  for (const [date, history] of Object.entries(state.log || {})) if (history?.length) days.add(date);
+  const logged = new Set(Object.keys(state.log || {}));
+  for (const row of state.legacy || []) if (row?.date && !logged.has(row.date)) days.add(row.date);
+  return [...days];
+}
+
+export function setRestaurants(list) {
+  const clean = L.cleanRestaurants(list);
+  const prev = state.restaurants || [];
+  if (clean.length === prev.length && clean.every((n, i) => n === prev[i])) return;
+  commit({ restaurants: clean });
+}
+
 export function setRoster(roster) {
   const clean = [...new Set(roster.map((n) => n.trim()).filter(Boolean))];
   commit(
@@ -349,6 +365,7 @@ function adoptRemote(remote) {
       next.live = data.live || blankLive();
       next.undo = data.undo || [];
       next.redo = data.redo || [];
+      if (Array.isArray(data.restaurants)) next.restaurants = data.restaurants;
     } else if (data.session) {
       Object.assign(next, fromV1(data.session), { undo: [], redo: [] });
     }
@@ -405,7 +422,13 @@ async function drain() {
       const res = await call({
         action: 'saveState',
         updatedAt: state.updatedAt,
-        state: { log: state.log, live: state.live, undo: state.undo, redo: state.redo },
+        state: {
+          log: state.log,
+          live: state.live,
+          undo: state.undo,
+          redo: state.redo,
+          restaurants: state.restaurants || [],
+        },
       });
       if (res.stale && res.state) adoptRemote(res);
     }

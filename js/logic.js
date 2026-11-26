@@ -27,6 +27,59 @@ export function addDays(date, n) {
   return `${utc.getUTCFullYear()}-${p(utc.getUTCMonth() + 1)}-${p(utc.getUTCDate())}`;
 }
 
+/** Trimmed restaurant names, first spelling kept, later case-duplicates dropped. */
+export function cleanRestaurants(list) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of list || []) {
+    const name = String(raw).trim().replace(/\s+/g, ' ');
+    const key = name.toLocaleLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+  }
+  return out;
+}
+
+/** A fixed number from the first game day's date. The same day always seeds the same sequence. */
+function seedFromDay(date) {
+  let n = 0xa5c39e17;
+  for (let i = 0; i < date.length; i++) n = Math.imul(n ^ date.charCodeAt(i), 0x5bd1e995);
+  return n >>> 0;
+}
+
+function nextRand(n) {
+  n = Math.imul(n ^ (n >>> 15), 0x27bb2ee6);
+  n = Math.imul(n ^ (n >>> 13), 0x165667b1);
+  return (n ^ (n >>> 16)) >>> 0;
+}
+
+function chooseRestaurant(names, prev, n) {
+  const choices = names.length > 1 && prev ? names.filter((name) => name !== prev) : names;
+  return (choices.length ? choices : names)[n % (choices.length || names.length)];
+}
+
+/** The place for `date`. `gameDays` are dates that already have games.
+    The first game day seeds the sequence. Each later game day calls next() once.
+    A day with no games is not a step, so it does not move the days after it.
+    The next game day gets a different place unless the list has only one. */
+export function restaurantFor(date, list, gameDays = []) {
+  const names = cleanRestaurants(list);
+  if (!names.length) return '';
+  if (names.length === 1) return names[0];
+  const days = [...new Set((gameDays || []).filter((d) => d && d < date))].sort();
+  days.push(date);
+  let n = seedFromDay(days[0]);
+  let prev = '';
+  let pick = chooseRestaurant(names, prev, n);
+  for (let i = 1; i < days.length; i++) {
+    n = nextRand(n);
+    prev = pick;
+    pick = chooseRestaurant(names, prev, n);
+  }
+  return pick;
+}
+
 export function newSession() {
   return { id: uid(), date: localDate(), present: [], seen: [], match: null, history: [] };
 }

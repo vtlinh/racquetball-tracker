@@ -17,6 +17,53 @@ function checkIn(names, rng) {
 
 const teammates = (sides, a, b) => sides.some((t) => t.includes(a) && t.includes(b));
 
+test('a day always picks the same restaurant, and the next game day picks another', () => {
+  const list = ['Pho', ' pho ', 'Pizza', 'Tacos', 'Ramen'];
+  assert.deepEqual(L.cleanRestaurants(list), ['Pho', 'Pizza', 'Tacos', 'Ramen']);
+  assert.equal(L.restaurantFor('2026-01-01', ['  '], []), '');
+  assert.equal(L.restaurantFor('2026-01-01', ['Pho'], ['2026-01-01']), 'Pho');
+  assert.equal(L.restaurantFor('2026-01-02', ['Pho'], ['2026-01-01', '2026-01-02']), 'Pho');
+
+  const days = [];
+  for (let i = 1; i <= 40; i++) days.push(`2026-01-${String(i).padStart(2, '0')}`);
+  const picks = days.map((d) => L.restaurantFor(d, list, days));
+  assert.deepEqual(
+    picks,
+    days.map((d) => L.restaurantFor(d, list, days)),
+    'the same list and game days pick the same places again',
+  );
+  for (let i = 1; i < picks.length; i++) assert.notEqual(picks[i], picks[i - 1]);
+
+  const wed = L.restaurantFor('2026-01-03', list, ['2026-01-01', '2026-01-03']);
+  assert.equal(wed, L.restaurantFor('2026-01-03', list, ['2026-01-01', '2026-01-03']));
+  assert.notEqual(wed, L.restaurantFor('2026-01-01', list, ['2026-01-01', '2026-01-03']));
+  const tuesday = L.restaurantFor('2026-01-02', list, ['2026-01-01', '2026-01-03']);
+  assert.notEqual(tuesday, L.restaurantFor('2026-01-01', list, ['2026-01-01', '2026-01-03']));
+  assert.equal(wed, L.restaurantFor('2026-01-03', list, ['2026-01-01', '2026-01-03']));
+
+  assert.equal(
+    L.restaurantFor('2026-01-01', list, ['2026-01-01']),
+    L.restaurantFor('2026-01-01', list, days),
+    'later game days do not change the first game day',
+  );
+
+  const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  const second = L.restaurantFor('2026-01-03', names, ['2026-01-01', '2026-01-03']);
+  for (let month = 2; month <= 9; month++) {
+    const d = `2026-0${month}-03`;
+    assert.equal(
+      L.restaurantFor(d, names, ['2026-01-01', d]),
+      second,
+      'one next() after the first game day, whatever that later date is',
+    );
+  }
+  assert.notEqual(
+    L.restaurantFor('2026-01-05', names, ['2026-01-01', '2026-01-02', '2026-01-05']),
+    L.restaurantFor('2026-01-05', names, ['2026-01-01', '2026-01-05']),
+    'a game day in the gap takes its own next(), so the day after it moves',
+  );
+});
+
 test('player count decides the format; only 5+ forces a sit-out', () => {
   const rng = seeded(3);
   const cases = { 2: ['1v1', 0], 3: ['3way', 0], 4: ['2v2', 0], 5: ['2v2', 1] };
