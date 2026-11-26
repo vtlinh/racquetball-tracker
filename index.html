@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=15" />
+    <link rel="stylesheet" href="css/styles.css?v=16" />
   </head>
   <body>
     <main>
@@ -70,28 +70,6 @@
         <input id="newPlayer" placeholder="Add player" autocomplete="off" maxlength="20" />
         <button class="btn" title="Add" data-icon="plus"></button>
       </form>
-
-      <h3>Google Sheet</h3>
-      <p class="muted small" id="syncInfo"></p>
-      <form id="apiForm" class="row">
-        <input id="apiUrl" placeholder="Apps Script web app URL (…/exec)" autocomplete="off" />
-        <button class="btn" title="Save" data-icon="check"></button>
-      </form>
-      <div class="row">
-        <a class="btn" id="sheetLink" target="_blank" rel="noopener" title="Open sheet" data-icon="sheet"></a>
-        <button class="btn" id="copyScript" title="Copy Apps Script code" data-icon="copy"></button>
-        <button class="btn" id="syncNow" title="Sync now" data-icon="sync"></button>
-      </div>
-      <details class="small">
-        <summary>Connect the sheet (one time)</summary>
-        <ol>
-          <li>Open the sheet, then <b>Extensions → Apps Script</b>.</li>
-          <li>Replace <code>Code.gs</code> with the copied script and save.</li>
-          <li><b>Deploy → New deployment → Web app</b>; Execute as <b>Me</b>, access <b>Anyone</b>.</li>
-          <li>Authorize, copy the <code>/exec</code> URL and paste it above.</li>
-        </ol>
-        <p class="muted">Tip: open the app as <code>…/?api=&lt;url&gt;</code> to configure another phone.</p>
-      </details>
     </dialog>
 
     <script>
@@ -100,6 +78,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=15"></script>
+    <script type="module" src="js/app.js?v=16"></script>
   </body>
 </html>

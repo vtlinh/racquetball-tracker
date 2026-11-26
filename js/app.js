@@ -1,7 +1,6 @@
 import * as L from './logic.js';
 import * as S from './store.js';
 import { icon, hydrateIcons } from './icons.js';
-import { SHEET_URL } from './config.js';
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) =>
@@ -263,14 +262,6 @@ function renderSettings() {
         `<span class="pill">${esc(p)}<button class="x" data-remove="${esc(p)}" title="Remove ${esc(p)}">${icon('x')}</button></span>`,
     )
     .join('');
-  const url = S.getApiUrl();
-  if (document.activeElement !== $('#apiUrl')) $('#apiUrl').value = url;
-  const { status, error } = S.getSync();
-  $('#syncInfo').textContent = !url
-    ? 'Not connected: data is kept in this browser until the sheet is connected.'
-    : status === 'error'
-      ? `Connected, last sync failed: ${error}`
-      : 'Connected: results, the live lineup and the roster are stored in the sheet.';
 }
 
 // ---- events ---------------------------------------------------------------------
@@ -459,22 +450,6 @@ $('#addPlayerForm').onsubmit = (e) => {
   if (n) S.setRoster([...S.getState().roster, n]);
   $('#newPlayer').value = '';
 };
-$('#apiForm').onsubmit = (e) => {
-  e.preventDefault();
-  S.setApiUrl($('#apiUrl').value);
-  toast(S.getApiUrl() ? 'Sheet connected' : 'Sheet disconnected');
-};
-$('#sheetLink').href = SHEET_URL;
-$('#copyScript').onclick = async () => {
-  try {
-    const code = await (await fetch('apps-script/Code.gs')).text();
-    await navigator.clipboard.writeText(code);
-    toast('Apps Script copied');
-  } catch {
-    window.open('apps-script/Code.gs', '_blank');
-  }
-};
-$('#syncNow').onclick = () => S.flush().then(S.pull);
 
 hydrateIcons();
 S.subscribe(render);
