@@ -41,7 +41,6 @@ function render() {
   const history = S.dayHistory();
   renderDay();
   renderTools(live);
-  renderSync();
   renderCourt(live);
   renderOut(live, history);
   renderPlayers(live, history);
@@ -64,23 +63,6 @@ function renderTools(live) {
   $('#undoBtn').disabled = !S.canUndo();
   $('#redoBtn').hidden = !S.canRedo();
   $('#shuffleBtn').disabled = !live.match || L.onCourt(live.match).length !== 4;
-}
-
-function renderSync() {
-  const { status } = S.getSync();
-  const { pending, dirty } = S.getState();
-  const waiting = pending.length || dirty;
-  const text = {
-    local: 'Saved in this browser.',
-    idle: waiting
-      ? 'Saved in this browser. Waiting to sync…'
-      : 'Saved in this browser and synced to the sheet.',
-    syncing: 'Saved in this browser. Syncing…',
-    error: 'Saved in this browser. Sheet sync failed, retrying.',
-  }[status];
-  const el = $('#syncLine');
-  el.textContent = text;
-  el.classList.toggle('err', status === 'error');
 }
 
 function renderCourt(live) {
@@ -196,7 +178,7 @@ function renderStats() {
   $('#statsNote').textContent = days.length
     ? `${days.length} day${days.length === 1 ? '' : 's'}, ${matchesText(matches)}`
     : '';
-  put($('#daysList'), days.map((d, i) => dayGroup(d, i === 0)).join(''));
+  put($('#daysList'), days.map((d) => dayGroup(d)).join(''));
 }
 
 function resultTime(m) {
@@ -216,10 +198,10 @@ function resultLine(m) {
   return `${when}${when ? ' ' : ''}<span class="w">${esc(win)}</span> beat ${esc(lose)}${out}`;
 }
 
-function dayGroup(day, newest) {
+function dayGroup(day) {
   const { date, history } = day;
   const viewing = date === S.getViewDate();
-  const open = dayOpen.has(date) ? dayOpen.get(date) : newest || viewing;
+  const open = dayOpen.has(date) ? dayOpen.get(date) : date === L.localDate();
   const totals = L.aggregate(day.rows).sort(
     (a, b) => b.wins - a.wins || a.losses - b.losses || byName(a.player, b.player),
   );
@@ -239,7 +221,7 @@ function dayGroup(day, newest) {
         .reverse()
         .join('')}</ol>`
     : `<p class="legacy">No match details for this day.</p>`;
-  return `<details class="day ${viewing ? 'viewing' : ''}" data-date="${date}" ${open ? 'open' : ''}>
+  return `<details class="day ${viewing ? 'viewing' : ''}" name="days" data-date="${date}" ${open ? 'open' : ''}>
     <summary>
       <span class="day-title">${esc(dayName(date))}</span>
       <span class="muted">${matchesText(day.matches)}</span>
@@ -377,8 +359,17 @@ document.addEventListener('click', (e) => {
 $('#daysList').addEventListener(
   'toggle',
   (e) => {
-    const d = e.target.closest?.('details.day');
-    if (d) dayOpen.set(d.dataset.date, d.open);
+    const d = e.target;
+    if (!(d instanceof HTMLDetailsElement) || !d.classList.contains('day')) return;
+    if (!d.open) {
+      dayOpen.set(d.dataset.date, false);
+      return;
+    }
+    for (const other of d.parentElement.querySelectorAll('details.day')) {
+      if (other !== d) other.open = false;
+    }
+    for (const date of dayOpen.keys()) dayOpen.set(date, false);
+    dayOpen.set(d.dataset.date, true);
   },
   true,
 );
@@ -414,7 +405,7 @@ const openSettings = () => {
   renderSettings();
   $('#settingsDlg').showModal();
 };
-$('#syncLine').onclick = openSettings;
+$('#settingsBtn').onclick = openSettings;
 
 document.querySelectorAll('dialog').forEach((d) => {
   d.addEventListener('click', (e) => {

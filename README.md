@@ -12,7 +12,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 - **4 players:** 2v2, nobody sits out.
 - **3 players:** cut-throat (one winner). **2 players:** 1v1.
 - **The winning pair is never teamed together in the next match.** Among the remaining options, the split with the fewest repeat teammates today is picked, so pairings spread out.
-- **Manual overrides:** tap a name on the court, then tap another name to swap them (works between teams and the "Out" players). The coffee cup under a name sits that player out, and more than one player can sit. Tap the cup again to bring them back while the court has room for them. An override applies to that match only.
+- **Manual overrides:** tap a name on the court, then tap another name to swap them (works between teams and the "Out" players). The coffee cup beside a name sits that player out, and more than one player can sit. Tap the cup again to bring them back while the court has room for them. An override applies to that match only.
 - **Changing who sits out always reshuffles the teams**, so the player coming in doesn't just take the old spot. A swap that would put the last winning pair on the same team is refused, so that rule holds for manual changes too.
 - The shuffle button re-splits the current players into a different legal pairing.
 
@@ -20,22 +20,22 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 - Every result is saved under its date as soon as you tap **Win**. There's no end-of-day step: each day's rows in the sheet are rewritten automatically whenever that day changes.
 - The day picker at the top (‹ Today ›) chooses which day new results go to. Today is the Eastern Time date, so an evening game stays on that day. Tap the date to jump to any past day, or use the pencil on a day in the results list. A past day is shown in gold.
-- Below the Month/Year stats, results are grouped by day, newest day first and newest result first. Each result shows the time it was recorded, in Eastern Time, as `HH:MM`. Each day shows every player's wins-losses. Use ⇄ to change a result's winner and × to delete it.
+- Below the Month/Year stats, results are grouped by day, newest day first and newest result first. Only today starts expanded. Opening a day collapses the others, so one day is open at a time. Each result shows the time it was recorded, in Eastern Time, as `HH:MM`. Each day shows every player's wins-losses. Use ⇄ to change a result's winner and × to delete it.
 - 👑 goes to the day's most wins (a tie goes to whoever lost fewer); 💩 goes to the most losses (a tie goes to whoever won fewer). If it's still tied, nobody gets it.
 
 ## Buttons
 
-| Icon                      | Action                                                                                                                                                        |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Win (on each team)        | That team or player won, recorded on the day shown at the top, with the real time of the tap (`HH:MM` Eastern Time). The next lineup is picked automatically. |
-| Undo                      | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone.                       |
-| Redo                      | Puts back the last undone result change. It appears only after an undo, and a new result clears it.                                                           |
-| Shuffle                   | Re-split the teams.                                                                                                                                           |
-| ‹ date ›                  | Pick the day results are recorded on.                                                                                                                         |
-| Player name               | Include that player in the lineup, or leave them out.                                                                                                         |
-| Coffee cup (under a name) | Sit that player out, or bring them back. Several players can sit at once.                                                                                     |
-| Month / Year, arrows      | Stats for a month or year, with that period's results by day.                                                                                                 |
-| "Saved in this browser."  | Tap it for settings: roster and the Google Sheet connection.                                                                                                  |
+| Icon                       | Action                                                                                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Win (on each team)         | That team or player won, recorded on the day shown at the top, with the real time of the tap (`HH:MM` Eastern Time). The next lineup is picked automatically. |
+| Undo                       | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone.                       |
+| Redo                       | Puts back the last undone result change. It appears only after an undo, and a new result clears it.                                                           |
+| Shuffle                    | Re-split the teams.                                                                                                                                           |
+| ‹ date ›                   | Pick the day results are recorded on.                                                                                                                         |
+| Player name                | Include that player in the lineup, or leave them out.                                                                                                         |
+| Coffee cup (beside a name) | Sit that player out, or bring them back. Several players can sit at once.                                                                                     |
+| Month / Year, arrows       | Stats for a month or year, with that period's results by day.                                                                                                 |
+| Settings                   | Roster and the Google Sheet connection.                                                                                                                       |
 
 Played and won for the day are in the results at the bottom.
 

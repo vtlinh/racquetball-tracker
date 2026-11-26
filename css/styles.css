@@ -161,20 +161,6 @@ main {
   height: 36px;
   padding: 0;
 }
-.saved {
-  display: block;
-  margin: 6px 0 4px;
-  padding: 0 2px;
-  border: 0;
-  background: none;
-  font-size: 12px;
-  color: var(--muted);
-  text-align: left;
-}
-.saved.err {
-  color: var(--gold);
-}
-
 /* ---- match card ---- */
 .match {
   background: var(--teal);
@@ -311,44 +297,40 @@ main {
   color: var(--gold);
 }
 
-/* ---- today's players: names across, sit-out cup under each name ---- */
+/* ---- today's players: name and sit-out cup on one row ---- */
 .players {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
+  gap: 2px;
   justify-content: space-between;
+  align-items: center;
   margin-top: 4px;
-  padding-bottom: 2px;
 }
 .pchip {
-  flex: 1 0 auto;
-  min-width: 58px;
+  flex: 0 0 auto;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  gap: 0;
 }
 .pchip .pname {
   border: 0;
   background: none;
-  padding: 4px 2px;
+  padding: 4px 1px;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   color: #fff;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .pchip.away .pname {
   color: var(--muted);
 }
 .pchip .sit {
-  width: 34px;
-  min-width: 0;
-  height: 30px;
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
   padding: 0;
+  flex: none;
   color: var(--muted);
   border-color: var(--line);
 }
