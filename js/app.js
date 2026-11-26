@@ -523,7 +523,7 @@ $('#addPlayerForm').onsubmit = (e) => {
 };
 
 /** On two sides the ball stays between the teams and stops on the inner edge of each side's letters.
-    On a triple the names sit along the bottom and the ball bounces in the space above them. */
+    On a triple it stays to the right of the stacked names and rebounds off the right wall. */
 function rallyBall() {
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const trailLag = [4, 9, 15];
@@ -558,16 +558,17 @@ function rallyBall() {
     let maxX = Math.max(0, floor.clientWidth - ballW);
     let maxY = Math.max(0, floor.clientHeight - ballH);
     if (triples) {
-      // The floor of the rally is the top of the name row.
-      let rowTop = floor.clientHeight;
-      let sawRow = false;
-      for (const el of floor.querySelectorAll('.team')) {
+      // The left wall of the rally is the right edge of the letters.
+      let nameRight = 0;
+      let sawName = false;
+      for (const el of floor.querySelectorAll('.name')) {
         const b = el.getBoundingClientRect();
-        if (b.height < 1) continue;
-        rowTop = Math.min(rowTop, b.top - floorBox.top);
-        sawRow = true;
+        if (b.width < 1) continue;
+        const pad = textPad(el);
+        nameRight = Math.max(nameRight, b.right - pad.r - floorBox.left);
+        sawName = true;
       }
-      if (sawRow) maxY = Math.max(0, rowTop - ballH - 3);
+      if (sawName && floor.clientWidth - nameRight >= ballW + 8) minX = nameRight;
     } else {
       const mid = floorBox.left + floor.clientWidth / 2;
       // The name buttons pad the letters. The stop is the inner edge of those letters, for the full height of the court.
@@ -606,12 +607,12 @@ function rallyBall() {
       return;
     }
     if (!state) {
-      const laneH = triples ? Math.max(maxY, 24) : floor.clientHeight;
+      const laneW = Math.max(40, maxX - minX);
       state = {
-        x: maxX * 0.46,
+        x: triples ? minX + laneW * 0.4 : maxX * 0.46,
         y: maxY * 0.35,
-        vx: floor.clientWidth * (triples ? 0.48 : 0.72),
-        vy: laneH * 1.25,
+        vx: triples ? laneW * 0.9 : floor.clientWidth * 0.72,
+        vy: floor.clientHeight * 1.25,
         squash: 0,
         wall: 'right',
         sides,
