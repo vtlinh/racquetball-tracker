@@ -62,6 +62,7 @@ function renderDay() {
 
 function renderTools(live) {
   $('#undoBtn').disabled = !S.canUndo();
+  $('#redoBtn').hidden = !S.canRedo();
   $('#shuffleBtn').disabled = !live.match || L.onCourt(live.match).length !== 4;
 }
 
@@ -140,7 +141,7 @@ function renderPlayers(live, history) {
         const r = st[p];
         return `<div class="prow ${here ? '' : 'away'}">
           <span class="pname">${esc(p)}${star(p, stars)}</span>
-          <span>${r.played}</span><span>${r.wins}</span><span>${r.out}</span>
+          <span>${r.played}</span><span>${r.wins}</span>
           <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" ${here ? '' : 'disabled'}
             title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
           <button class="btn here ${here ? 'on' : ''}" data-act="toggle" data-name="${esc(p)}" aria-pressed="${here}"
@@ -154,16 +155,18 @@ function renderPlayers(live, history) {
 // ---- stats and results by day -------------------------------------------------
 
 function period() {
-  const d = new Date();
+  const [year, month] = L.localDate().split('-').map(Number);
   if (statsScope === 'month') {
-    d.setDate(1);
-    d.setMonth(d.getMonth() + statsOffset);
+    const index = year * 12 + (month - 1) + statsOffset;
+    const y = Math.floor(index / 12);
+    const m = index - y * 12;
+    const labelDate = new Date(Date.UTC(y, m, 1));
     return {
-      prefix: L.localDate(d).slice(0, 7),
-      label: d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
+      prefix: `${y}-${String(m + 1).padStart(2, '0')}`,
+      label: labelDate.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', year: 'numeric' }),
     };
   }
-  const y = String(d.getFullYear() + statsOffset);
+  const y = String(year + statsOffset);
   return { prefix: y, label: y };
 }
 
@@ -175,20 +178,19 @@ function renderStats() {
     .forEach((b) => b.classList.toggle('on', b.dataset.scope === statsScope));
   $('#periodLabel').textContent = period().label;
   const days = periodDays();
-  $('#clearPeriod').disabled = !days.length;
 
   const agg = L.aggregate(days.flatMap((d) => d.rows)).sort((a, b) => byName(a.player, b.player));
   put(
     $('#statsBody'),
     agg.length
       ? `<table class="stats">
-          <thead><tr><th>Player</th><th>Played</th><th>Won</th><th>Win %</th><th>Sat</th></tr></thead>
+          <thead><tr><th>Player</th><th>Played</th><th>Won</th><th>Win %</th></tr></thead>
           <tbody>${agg
             .map(
               (r) =>
                 `<tr><td>${esc(r.player)}</td><td>${r.played}</td><td>${r.wins}</td><td>${
                   r.played ? `${Math.round(L.winPct(r) * 100)}%` : '–'
-                }</td><td>${r.out}</td></tr>`,
+                }</td></tr>`,
             )
             .join('')}</tbody></table>`
       : '<p class="stats empty">No results</p>',
@@ -201,6 +203,12 @@ function renderStats() {
   put($('#daysList'), days.map((d, i) => dayGroup(d, i === 0)).join(''));
 }
 
+function resultTime(m) {
+  const label = L.formatTimeET(m.t, 'hhmm');
+  if (!label) return '';
+  return `<time datetime="${new Date(m.t).toISOString()}" title="Eastern Time">${esc(label)}</time>`;
+}
+
 function resultLine(m) {
   const win = m.sides[m.win].join(' & ');
   const lose = m.sides
@@ -208,7 +216,8 @@ function resultLine(m) {
     .map((t) => t.join(' & '))
     .join(', ');
   const out = m.out?.length ? `<span class="muted"> · ${esc(m.out.join(', '))} sat</span>` : '';
-  return `<span class="w">${esc(win)}</span> beat ${esc(lose)}${out}`;
+  const when = resultTime(m);
+  return `${when}${when ? ' ' : ''}<span class="w">${esc(win)}</span> beat ${esc(lose)}${out}`;
 }
 
 function dayGroup(day, newest) {
@@ -270,7 +279,9 @@ function renderSettings() {
 let toastTimer = 0;
 function toast(msg, withUndo = false) {
   const t = $('#toast');
-  t.innerHTML = `<span>${msg}</span>${withUndo ? `<button data-act="toastUndo">${icon('undo')}Undo</button>` : ''}`;
+  const undo = withUndo ? `<button data-act="toastUndo">${icon('undo')}Undo</button>` : '';
+  const redo = S.canRedo() ? `<button data-act="toastRedo">${icon('redo')}Redo</button>` : '';
+  t.innerHTML = `<span>${msg}</span>${undo}${redo}`;
   t.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => (t.hidden = true), 3500);
@@ -334,8 +345,10 @@ document.addEventListener('click', (e) => {
       selected = null;
       const team = S.getState().live.match.sides[+t.dataset.side];
       S.win(+t.dataset.side);
-      const when = S.isToday() ? '' : ` (${dayName(S.getViewDate())})`;
-      toast(`${icon('trophy')} ${esc(team.join(' & '))} won${esc(when)}`, true);
+      const day = S.isToday() ? '' : ` (${dayName(S.getViewDate())})`;
+      const clock = L.formatTimeET(S.dayHistory().at(-1)?.t, 'hhmm');
+      const at = clock ? ` at ${clock}` : '';
+      toast(`${icon('trophy')} ${esc(team.join(' & '))} won${esc(day)}${esc(at)}`, true);
       break;
     }
     case 'flip': {
@@ -354,8 +367,12 @@ document.addEventListener('click', (e) => {
       goToDay(date);
       return;
     case 'toastUndo':
-      $('#toast').hidden = true;
       S.undo();
+      toast('Undone');
+      break;
+    case 'toastRedo':
+      S.redo();
+      toast('Redone', true);
       break;
   }
   render();
@@ -370,11 +387,7 @@ $('#daysList').addEventListener(
   true,
 );
 
-const shiftDay = (n) => {
-  const d = new Date(`${S.getViewDate()}T12:00`);
-  d.setDate(d.getDate() + n);
-  goToDay(L.localDate(d));
-};
+const shiftDay = (n) => goToDay(L.addDays(S.getViewDate(), n));
 $('#prevDay').onclick = () => shiftDay(-1);
 $('#nextDay').onclick = () => shiftDay(1);
 $('#dayPick').onchange = (e) => e.target.value && goToDay(e.target.value);
@@ -390,6 +403,11 @@ $('#dayLabel').onclick = (e) => {
 $('#undoBtn').onclick = () => {
   selected = null;
   S.undo();
+  if (S.canRedo()) toast('Undone');
+};
+$('#redoBtn').onclick = () => {
+  selected = null;
+  S.redo();
 };
 $('#shuffleBtn').onclick = () => {
   selected = null;
@@ -419,19 +437,6 @@ $('#statsSeg').onclick = (e) => {
 };
 $('#prevPeriod').onclick = () => (statsOffset--, renderStats());
 $('#nextPeriod').onclick = () => (statsOffset++, renderStats());
-$('#clearPeriod').onclick = () => {
-  const days = periodDays();
-  if (!days.length) return;
-  const n = days.length;
-  if (
-    !confirm(
-      `Delete all results for ${n} day${n === 1 ? '' : 's'} in ${period().label}? This can’t be undone.`,
-    )
-  )
-    return;
-  S.deleteDays(days.map((d) => d.date));
-  toast('Deleted');
-};
 
 $('#rosterList').onclick = (e) => {
   const b = e.target.closest('[data-remove]');

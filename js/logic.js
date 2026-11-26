@@ -5,9 +5,26 @@ export const MAX_ON_COURT = 4;
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
+const EASTERN = 'America/New_York';
+
+/** Calendar date in Eastern Time, `YYYY-MM-DD`. Evening games stay on that ET day. */
 export function localDate(d = new Date()) {
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: EASTERN,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const get = (type) => parts.find((p) => p.type === type).value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Add calendar days to a `YYYY-MM-DD` date. */
+export function addDays(date, n) {
+  const [y, m, d] = String(date).split('-').map(Number);
+  const utc = new Date(Date.UTC(y, m - 1, d + n));
+  const p = (x) => String(x).padStart(2, '0');
+  return `${utc.getUTCFullYear()}-${p(utc.getUTCMonth() + 1)}-${p(utc.getUTCDate())}`;
 }
 
 export function newSession() {
@@ -248,6 +265,29 @@ export function setPresent(session, name, isPresent, rng = Math.random) {
   return { ...session, date, present, seen, match: planMatch(present, session.history, rng) };
 }
 
+/**
+ * Wall clock of a win's real timestamp (epoch ms) in Eastern Time.
+ * 'hhmm' is 24-hour "13:30" for the sheet; the default is "1:30 PM" for the UI.
+ * Missing or non-positive values return ''.
+ */
+export function formatTimeET(ms, kind = 'label') {
+  const n = +ms;
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: EASTERN,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(n));
+  const hh = parts.find((p) => p.type === 'hour')?.value;
+  const mm = parts.find((p) => p.type === 'minute')?.value;
+  if (hh == null || mm == null) return '';
+  let h = Number(hh);
+  if (h === 24) h = 0;
+  if (kind === 'hhmm') return `${String(h).padStart(2, '0')}:${mm}`;
+  return `${h % 12 || 12}:${mm} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
 /** Rows for the Days and Matches tabs. A day's rows are keyed by its date (the Session column). */
 export function dayRows(date, history, stampedAt = new Date().toISOString()) {
   const names = [...new Set(history.flatMap((m) => [...m.sides.flat(), ...(m.out || [])]))];
@@ -256,10 +296,6 @@ export function dayRows(date, history, stampedAt = new Date().toISOString()) {
     const r = st[p];
     return [date, date, p, r.played, r.wins, r.losses, r.out, stampedAt];
   });
-  const hhmm = (t) => {
-    const d = new Date(t);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  };
   const matches = history.map((m, i) => {
     const sides = m.sides.map((t) => t.join('+'));
     return [
@@ -272,7 +308,7 @@ export function dayRows(date, history, stampedAt = new Date().toISOString()) {
       sides[2] || '',
       sides[m.win],
       (m.out || []).join('+'),
-      hhmm(m.t),
+      formatTimeET(m.t, 'hhmm'),
     ];
   });
   return { days, matches };

@@ -213,6 +213,49 @@ test('reshuffle picks a different legal split and keeps the bench', () => {
   }
 });
 
+test('the playing day is the Eastern Time calendar date', () => {
+  // 01:48Z on Nov 26 is still 8:48 PM EST on Nov 25. Midnight EST is 05:00Z; midnight EDT is 04:00Z.
+  assert.equal(L.localDate(new Date('2026-11-26T01:48:00Z')), '2026-11-25');
+  assert.equal(L.localDate(new Date('2026-11-26T04:59:00Z')), '2026-11-25');
+  assert.equal(L.localDate(new Date('2026-11-26T05:00:00Z')), '2026-11-26');
+  assert.equal(L.localDate(new Date('2026-07-15T03:59:00Z')), '2026-07-14');
+  assert.equal(L.localDate(new Date('2026-07-15T04:00:00Z')), '2026-07-15');
+  assert.equal(L.addDays('2026-11-25', 1), '2026-11-26');
+  assert.equal(L.addDays('2026-11-25', -1), '2026-11-24');
+  assert.equal(L.addDays('2026-03-01', -1), '2026-02-28');
+  assert.equal(L.addDays('2024-03-01', -1), '2024-02-29');
+});
+
+test('a win stores the real instant and times are shown in Eastern Time', () => {
+  const rng = seeded(4);
+  let s = checkIn(['Rick', 'Leo'], rng);
+  const before = Date.now();
+  s = L.recordWin(s, 0, rng);
+  const after = Date.now();
+  const t = s.history.at(-1).t;
+  assert.ok(t >= before && t <= after, 'win uses a real timestamp');
+
+  // 18:30Z in January is 1:30 PM EST; 16:05Z in July is 12:05 PM EDT; 05:00Z is midnight EST.
+  const winter = Date.parse('2026-01-15T18:30:00.000Z');
+  const summer = Date.parse('2026-07-15T16:05:00.000Z');
+  const midnight = Date.parse('2026-01-15T05:00:00.000Z');
+  assert.equal(L.formatTimeET(winter), '1:30 PM');
+  assert.equal(L.formatTimeET(winter, 'hhmm'), '13:30');
+  assert.equal(L.formatTimeET(summer), '12:05 PM');
+  assert.equal(L.formatTimeET(summer, 'hhmm'), '12:05');
+  assert.equal(L.formatTimeET(midnight), '12:00 AM');
+  assert.equal(L.formatTimeET(midnight, 'hhmm'), '00:00');
+  assert.equal(L.formatTimeET(0), '');
+  assert.equal(L.formatTimeET(undefined), '');
+
+  s = L.recordWin(s, 0, rng, winter);
+  s = L.recordWin(s, 0, rng, summer);
+  const { matches } = L.dayRows(s.date, s.history);
+  assert.equal(matches[0][9], L.formatTimeET(t, 'hhmm'));
+  assert.equal(matches[1][9], '13:30');
+  assert.equal(matches[2][9], '12:05');
+});
+
 test('dayRows and aggregate produce the per-day rows and period totals', () => {
   const rng = seeded(11);
   let s = checkIn(FIVE, rng);
