@@ -5,9 +5,26 @@ export const MAX_ON_COURT = 4;
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
+const EASTERN = 'America/New_York';
+
+/** Calendar date in Eastern Time, `YYYY-MM-DD`. Evening games stay on that ET day. */
 export function localDate(d = new Date()) {
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: EASTERN,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const get = (type) => parts.find((p) => p.type === type).value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+/** Add calendar days to a `YYYY-MM-DD` date. */
+export function addDays(date, n) {
+  const [y, m, d] = String(date).split('-').map(Number);
+  const utc = new Date(Date.UTC(y, m - 1, d + n));
+  const p = (x) => String(x).padStart(2, '0');
+  return `${utc.getUTCFullYear()}-${p(utc.getUTCMonth() + 1)}-${p(utc.getUTCDate())}`;
 }
 
 export function newSession() {
@@ -247,8 +264,6 @@ export function setPresent(session, name, isPresent, rng = Math.random) {
   const date = session.present.length || session.history.length ? session.date : localDate();
   return { ...session, date, present, seen, match: planMatch(present, session.history, rng) };
 }
-
-const EASTERN = 'America/New_York';
 
 /**
  * Wall clock of a win's real timestamp (epoch ms) in Eastern Time.

@@ -213,6 +213,19 @@ test('reshuffle picks a different legal split and keeps the bench', () => {
   }
 });
 
+test('the playing day is the Eastern Time calendar date', () => {
+  // 01:48Z on Nov 26 is still 8:48 PM EST on Nov 25. Midnight EST is 05:00Z; midnight EDT is 04:00Z.
+  assert.equal(L.localDate(new Date('2026-11-26T01:48:00Z')), '2026-11-25');
+  assert.equal(L.localDate(new Date('2026-11-26T04:59:00Z')), '2026-11-25');
+  assert.equal(L.localDate(new Date('2026-11-26T05:00:00Z')), '2026-11-26');
+  assert.equal(L.localDate(new Date('2026-07-15T03:59:00Z')), '2026-07-14');
+  assert.equal(L.localDate(new Date('2026-07-15T04:00:00Z')), '2026-07-15');
+  assert.equal(L.addDays('2026-11-25', 1), '2026-11-26');
+  assert.equal(L.addDays('2026-11-25', -1), '2026-11-24');
+  assert.equal(L.addDays('2026-03-01', -1), '2026-02-28');
+  assert.equal(L.addDays('2024-03-01', -1), '2024-02-29');
+});
+
 test('a win stores the real instant and times are shown in Eastern Time', () => {
   const rng = seeded(4);
   let s = checkIn(['Rick', 'Leo'], rng);

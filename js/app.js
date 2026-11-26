@@ -154,16 +154,18 @@ function renderPlayers(live, history) {
 // ---- stats and results by day -------------------------------------------------
 
 function period() {
-  const d = new Date();
+  const [year, month] = L.localDate().split('-').map(Number);
   if (statsScope === 'month') {
-    d.setDate(1);
-    d.setMonth(d.getMonth() + statsOffset);
+    const index = year * 12 + (month - 1) + statsOffset;
+    const y = Math.floor(index / 12);
+    const m = index - y * 12;
+    const labelDate = new Date(Date.UTC(y, m, 1));
     return {
-      prefix: L.localDate(d).slice(0, 7),
-      label: d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
+      prefix: `${y}-${String(m + 1).padStart(2, '0')}`,
+      label: labelDate.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', year: 'numeric' }),
     };
   }
-  const y = String(d.getFullYear() + statsOffset);
+  const y = String(year + statsOffset);
   return { prefix: y, label: y };
 }
 
@@ -379,11 +381,7 @@ $('#daysList').addEventListener(
   true,
 );
 
-const shiftDay = (n) => {
-  const d = new Date(`${S.getViewDate()}T12:00`);
-  d.setDate(d.getDate() + n);
-  goToDay(L.localDate(d));
-};
+const shiftDay = (n) => goToDay(L.addDays(S.getViewDate(), n));
 $('#prevDay').onclick = () => shiftDay(-1);
 $('#nextDay').onclick = () => shiftDay(1);
 $('#dayPick').onchange = (e) => e.target.value && goToDay(e.target.value);
