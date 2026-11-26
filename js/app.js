@@ -261,7 +261,11 @@ function resultTime(m) {
 function resultLine(m) {
   const withDelta = (names, won) =>
     names
-      .map((p) => `${esc(p)} <span class="delta">(${L.formatScore(L.pointsFor(m, won))})</span>`)
+      .map((p) => {
+        const points = L.pointsFor(m, won);
+        const tone = points < 0 ? 'down' : 'up';
+        return `${esc(p)} <span class="delta ${tone}">${L.formatScore(points)}</span>`;
+      })
       .join(' & ');
   const win = withDelta(m.sides[m.win], true);
   const lose = m.sides
