@@ -20,14 +20,14 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 - Every result is saved under its date as soon as you tap **Win**. There's no end-of-day step: each day's rows in the sheet are rewritten automatically whenever that day changes.
 - The day picker at the top (‹ Today ›) chooses which day new results go to. Tap the date to jump to any past day, or use the pencil on a day in the results list. A past day is shown in gold.
-- Below the Month/Year stats, results are grouped by day, newest day first and newest result first. Each day shows every player's wins-losses. Use ⇄ to change a result's winner and × to delete it.
+- Below the Month/Year stats, results are grouped by day, newest day first and newest result first. Each result shows the time it was recorded, in Eastern Time. Each day shows every player's wins-losses. Use ⇄ to change a result's winner and × to delete it.
 - 👑 goes to the day's most wins (a tie goes to whoever lost fewer); 💩 goes to the most losses (a tie goes to whoever won fewer). If it's still tied, nobody gets it.
 
 ## Buttons
 
 | Icon | Action |
 | --- | --- |
-| Win (on each team) | That team or player won, recorded on the day shown at the top. The next lineup is picked automatically. |
+| Win (on each team) | That team or player won, recorded on the day shown at the top, with the real time of the tap (shown in Eastern Time). The next lineup is picked automatically. |
 | Undo | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone. |
 | Shuffle | Re-split the teams. |
 | ‹ date › | Pick the day results are recorded on. |
@@ -43,7 +43,7 @@ The player rows show played, won and sat for the day shown at the top.
 The sheet has these tabs (set up already):
 
 - `Days`: one row per player per day (played, wins, losses, sat out), keyed by date.
-- `Matches`: every match, keyed by date.
+- `Matches`: every match, keyed by date. The Time column is Eastern Time (24-hour).
 - `Monthly` and `Yearly`: per-player summaries built with `QUERY` formulas over `Days`.
 - `Players`: the roster.
 - `State`: all results by day, the live lineup and the undo history (managed by the app). This is how several phones share the same session.

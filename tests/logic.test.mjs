@@ -213,6 +213,36 @@ test('reshuffle picks a different legal split and keeps the bench', () => {
   }
 });
 
+test('a win stores the real instant and times are shown in Eastern Time', () => {
+  const rng = seeded(4);
+  let s = checkIn(['Rick', 'Leo'], rng);
+  const before = Date.now();
+  s = L.recordWin(s, 0, rng);
+  const after = Date.now();
+  const t = s.history.at(-1).t;
+  assert.ok(t >= before && t <= after, 'win uses a real timestamp');
+
+  // 18:30Z in January is 1:30 PM EST; 16:05Z in July is 12:05 PM EDT; 05:00Z is midnight EST.
+  const winter = Date.parse('2026-01-15T18:30:00.000Z');
+  const summer = Date.parse('2026-07-15T16:05:00.000Z');
+  const midnight = Date.parse('2026-01-15T05:00:00.000Z');
+  assert.equal(L.formatTimeET(winter), '1:30 PM');
+  assert.equal(L.formatTimeET(winter, 'hhmm'), '13:30');
+  assert.equal(L.formatTimeET(summer), '12:05 PM');
+  assert.equal(L.formatTimeET(summer, 'hhmm'), '12:05');
+  assert.equal(L.formatTimeET(midnight), '12:00 AM');
+  assert.equal(L.formatTimeET(midnight, 'hhmm'), '00:00');
+  assert.equal(L.formatTimeET(0), '');
+  assert.equal(L.formatTimeET(undefined), '');
+
+  s = L.recordWin(s, 0, rng, winter);
+  s = L.recordWin(s, 0, rng, summer);
+  const { matches } = L.dayRows(s.date, s.history);
+  assert.equal(matches[0][9], L.formatTimeET(t, 'hhmm'));
+  assert.equal(matches[1][9], '13:30');
+  assert.equal(matches[2][9], '12:05');
+});
+
 test('dayRows and aggregate produce the per-day rows and period totals', () => {
   const rng = seeded(11);
   let s = checkIn(FIVE, rng);

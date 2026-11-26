@@ -201,6 +201,12 @@ function renderStats() {
   put($('#daysList'), days.map((d, i) => dayGroup(d, i === 0)).join(''));
 }
 
+function resultTime(m) {
+  const label = L.formatTimeET(m.t);
+  if (!label) return '';
+  return `<time datetime="${new Date(m.t).toISOString()}" title="Eastern Time">${esc(label)} ET</time>`;
+}
+
 function resultLine(m) {
   const win = m.sides[m.win].join(' & ');
   const lose = m.sides
@@ -208,7 +214,8 @@ function resultLine(m) {
     .map((t) => t.join(' & '))
     .join(', ');
   const out = m.out?.length ? `<span class="muted"> · ${esc(m.out.join(', '))} sat</span>` : '';
-  return `<span class="w">${esc(win)}</span> beat ${esc(lose)}${out}`;
+  const when = resultTime(m);
+  return `${when}${when ? ' ' : ''}<span class="w">${esc(win)}</span> beat ${esc(lose)}${out}`;
 }
 
 function dayGroup(day, newest) {
@@ -334,8 +341,10 @@ document.addEventListener('click', (e) => {
       selected = null;
       const team = S.getState().live.match.sides[+t.dataset.side];
       S.win(+t.dataset.side);
-      const when = S.isToday() ? '' : ` (${dayName(S.getViewDate())})`;
-      toast(`${icon('trophy')} ${esc(team.join(' & '))} won${esc(when)}`, true);
+      const day = S.isToday() ? '' : ` (${dayName(S.getViewDate())})`;
+      const clock = L.formatTimeET(S.dayHistory().at(-1)?.t);
+      const at = clock ? ` at ${clock} ET` : '';
+      toast(`${icon('trophy')} ${esc(team.join(' & '))} won${esc(day)}${esc(at)}`, true);
       break;
     }
     case 'flip': {

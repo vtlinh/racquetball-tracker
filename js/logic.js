@@ -248,6 +248,31 @@ export function setPresent(session, name, isPresent, rng = Math.random) {
   return { ...session, date, present, seen, match: planMatch(present, session.history, rng) };
 }
 
+const EASTERN = 'America/New_York';
+
+/**
+ * Wall clock of a win's real timestamp (epoch ms) in Eastern Time.
+ * 'hhmm' is 24-hour "13:30" for the sheet; the default is "1:30 PM" for the UI.
+ * Missing or non-positive values return ''.
+ */
+export function formatTimeET(ms, kind = 'label') {
+  const n = +ms;
+  if (!Number.isFinite(n) || n <= 0) return '';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: EASTERN,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(n));
+  const hh = parts.find((p) => p.type === 'hour')?.value;
+  const mm = parts.find((p) => p.type === 'minute')?.value;
+  if (hh == null || mm == null) return '';
+  let h = Number(hh);
+  if (h === 24) h = 0;
+  if (kind === 'hhmm') return `${String(h).padStart(2, '0')}:${mm}`;
+  return `${h % 12 || 12}:${mm} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
 /** Rows for the Days and Matches tabs. A day's rows are keyed by its date (the Session column). */
 export function dayRows(date, history, stampedAt = new Date().toISOString()) {
   const names = [...new Set(history.flatMap((m) => [...m.sides.flat(), ...(m.out || [])]))];
@@ -256,10 +281,6 @@ export function dayRows(date, history, stampedAt = new Date().toISOString()) {
     const r = st[p];
     return [date, date, p, r.played, r.wins, r.losses, r.out, stampedAt];
   });
-  const hhmm = (t) => {
-    const d = new Date(t);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  };
   const matches = history.map((m, i) => {
     const sides = m.sides.map((t) => t.join('+'));
     return [
@@ -272,7 +293,7 @@ export function dayRows(date, history, stampedAt = new Date().toISOString()) {
       sides[2] || '',
       sides[m.win],
       (m.out || []).join('+'),
-      hhmm(m.t),
+      formatTimeET(m.t, 'hhmm'),
     ];
   });
   return { days, matches };

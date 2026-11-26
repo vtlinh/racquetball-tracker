@@ -180,6 +180,11 @@ p.stats.empty {
 }
 .results li b { color: var(--muted); font-weight: 600; min-width: 18px; }
 .results .res { flex: 1; min-width: 0; }
+.results time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .results .w { font-weight: 700; }
 .legacy { margin: 0; padding: 4px 10px 8px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
 
