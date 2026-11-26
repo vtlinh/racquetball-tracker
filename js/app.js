@@ -24,6 +24,7 @@ const markHtml = (emoji) =>
 
 const STATS_SCOPE_KEY = 'rb.statsScope';
 const STATS_SCOPES = ['all', 'year', 'month'];
+const READ_KEY = 'rb.readOnly';
 
 function loadStatsScope() {
   try {
@@ -39,7 +40,16 @@ function rememberStatsScope(scope) {
   } catch {}
 }
 
+function loadReadOnly() {
+  try {
+    return localStorage.getItem(READ_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 let selected = null;
+let readOnly = loadReadOnly();
 let statsScope = loadStatsScope();
 let statsOffset = 0;
 /** null keeps names A–Z. 'desc' puts the higher value first. Player has no up-arrow sort. */
@@ -53,8 +63,11 @@ function put(el, html) {
   el.innerHTML = html;
 }
 
-const nameBtn = (name, cls = '') =>
-  `<button class="name ${cls} ${name === selected ? 'sel' : ''}" data-act="pick" data-name="${esc(name)}">${esc(name)}</button>`;
+const nameBtn = (name, cls = '') => {
+  const label = esc(name);
+  if (readOnly) return `<span class="name ${cls}">${label}</span>`;
+  return `<button class="name ${cls} ${name === selected ? 'sel' : ''}" data-act="pick" data-name="${label}">${label}</button>`;
+};
 
 // ---- render ----------------------------------------------------------------
 
@@ -67,7 +80,6 @@ function render() {
   renderOut(live, history);
   renderPlayers(live, history);
   renderStats();
-  if ($('#settingsDlg').open) renderSettings();
 }
 
 /** Dates that have at least one recorded match, oldest first. Empty days are skipped. */
@@ -103,9 +115,19 @@ function renderDay() {
 }
 
 function renderTools(live) {
-  $('#undoBtn').disabled = !S.canUndo();
-  $('#redoBtn').hidden = !S.canRedo();
-  $('#shuffleBtn').disabled = !live.match || L.onCourt(live.match).length !== 4;
+  $('#undoBtn').hidden = readOnly;
+  $('#redoBtn').hidden = readOnly || !S.canRedo();
+  $('#shuffleBtn').hidden = readOnly;
+  if (!readOnly) {
+    $('#undoBtn').disabled = !S.canUndo();
+    $('#shuffleBtn').disabled = !live.match || L.onCourt(live.match).length !== 4;
+  }
+  const readBtn = $('#readBtn');
+  const label = readOnly ? 'Read only on' : 'Read only';
+  readBtn.title = label;
+  readBtn.setAttribute('aria-label', label);
+  readBtn.setAttribute('aria-pressed', String(readOnly));
+  readBtn.classList.toggle('on', readOnly);
 }
 
 function renderCourt(live) {
@@ -113,7 +135,8 @@ function renderCourt(live) {
   const el = $('#court');
   if (!m) {
     const n = live.present.length;
-    put(el, `<p class="empty">${n ? 'Need at least 2 players' : 'Check in who’s here below'}</p>`);
+    const empty = n ? 'Need at least 2 players' : readOnly ? 'Nobody is checked in' : 'Check in who’s here below';
+    put(el, `<p class="empty">${empty}</p>`);
     return;
   }
   const shown =
@@ -123,10 +146,13 @@ function renderCourt(live) {
   const teams = shown.map(({ team, i }) => {
     const names = [...team].sort(byName);
     const label = `${esc(names.join(' + '))} won`;
+    const trophy = readOnly
+      ? ''
+      : `<button class="win" data-act="win" data-side="${i}" title="${label}" aria-label="${label}">${icon('trophy')}</button>`;
     return `
       <div class="team">
         <div class="team-names">${names.map((p) => nameBtn(p)).join('')}</div>
-        <button class="win" data-act="win" data-side="${i}" title="${label}" aria-label="${label}">${icon('trophy')}</button>
+        ${trophy}
       </div>`;
   });
   const ball =
@@ -158,11 +184,15 @@ function renderOut(live, history) {
   }
   const blocked = L.blockedPair(history);
   const clash = blocked && m.sides.some((t) => t.length === 2 && blocked.every((p) => t.includes(p)));
-  const hint = selected
-    ? 'tap another name'
-    : clash
+  const hint = readOnly
+    ? clash
       ? `<span class="warn">last winners together</span>`
-      : 'tap names to swap';
+      : ''
+    : selected
+      ? 'tap another name'
+      : clash
+        ? `<span class="warn">last winners together</span>`
+        : 'tap names to swap';
   put(
     el,
     `<span class="out-label">Out</span>
@@ -191,13 +221,20 @@ function renderPlayers(live, history) {
       .map((p) => {
         const here = live.present.includes(p);
         const out = !!m?.out.includes(p);
+        const label = esc(p);
+        const name = readOnly
+          ? `<span class="pname ${here ? 'on' : ''}">${label}</span>`
+          : `<button class="pname ${here ? 'on' : ''}" data-act="toggle" data-name="${label}" aria-pressed="${here}"
+              title="${here ? `${label} is in the lineup — tap to leave` : `Include ${label} in the lineup`}">${label}</button>`;
+        const sit = readOnly
+          ? ''
+          : `<button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${label}" aria-pressed="${out}" ${here ? '' : 'disabled'}
+              title="${out ? `${label} is sitting out — tap to bring back` : `Sit ${label} out`}">${icon('coffee')}</button>`;
         return `<div class="pchip ${here ? '' : 'away'}">
           ${markHtml(dayMark(p, stars, stats[p]?.played))}
           <span class="pchip-line">
-            <button class="pname ${here ? 'on' : ''}" data-act="toggle" data-name="${esc(p)}" aria-pressed="${here}"
-              title="${here ? `${esc(p)} is in the lineup — tap to leave` : `Include ${esc(p)} in the lineup`}">${esc(p)}</button>
-            <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" aria-pressed="${out}" ${here ? '' : 'disabled'}
-              title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
+            ${name}
+            ${sit}
           </span>
         </div>`;
       })
@@ -366,13 +403,17 @@ function dayGroup(day) {
       return `<span><b>${esc(r.player)}</b>${emoji ? ` ${emoji}` : ''} <span class="pts" style="color: color-mix(in srgb, var(--orange), var(--green) ${tone}%)">${L.formatScore(r.score)}</span></span>`;
     })
     .join('');
+  const edits = (i) =>
+    readOnly
+      ? ''
+      : `<button class="btn sm" data-act="flip" data-date="${date}" data-i="${i}" title="Change winner">${icon('swap')}</button>
+            <button class="btn sm" data-act="delMatch" data-date="${date}" data-i="${i}" title="Delete result">${icon('x')}</button>`;
   const body = history
     ? `<ol class="results">${history
         .map(
           (m, i) => `<li>
             <b>${i + 1}</b><span class="res">${resultLine(m)}</span>
-            <button class="btn sm" data-act="flip" data-date="${date}" data-i="${i}" title="Change winner">${icon('swap')}</button>
-            <button class="btn sm" data-act="delMatch" data-date="${date}" data-i="${i}" title="Delete result">${icon('x')}</button>
+            ${edits(i)}
           </li>`,
         )
         .reverse()
@@ -388,26 +429,25 @@ function dayGroup(day) {
   </details>`;
 }
 
-// ---- settings dialog ----------------------------------------------------------
-
-function renderSettings() {
-  const { roster } = S.getState();
-  $('#rosterList').innerHTML = [...roster]
-    .sort(byName)
-    .map(
-      (p) =>
-        `<span class="pill">${esc(p)}<button class="x" data-remove="${esc(p)}" title="Remove ${esc(p)}">${icon('x')}</button></span>`,
-    )
-    .join('');
-}
-
 // ---- events ---------------------------------------------------------------------
 
 let toastTimer = 0;
+function setReadOnly(on) {
+  readOnly = on;
+  try {
+    localStorage.setItem(READ_KEY, on ? '1' : '0');
+  } catch {}
+  selected = null;
+  const t = $('#toast');
+  t.hidden = true;
+  clearTimeout(toastTimer);
+  render();
+}
+
 function toast(msg, withUndo = false) {
   const t = $('#toast');
-  const undo = withUndo ? `<button data-act="toastUndo">${icon('undo')}Undo</button>` : '';
-  const redo = S.canRedo() ? `<button data-act="toastRedo">${icon('redo')}Redo</button>` : '';
+  const undo = !readOnly && withUndo ? `<button data-act="toastUndo">${icon('undo')}Undo</button>` : '';
+  const redo = !readOnly && S.canRedo() ? `<button data-act="toastRedo">${icon('redo')}Redo</button>` : '';
   t.innerHTML = `<span>${msg}</span>${undo}${redo}`;
   t.hidden = false;
   clearTimeout(toastTimer);
@@ -443,9 +483,12 @@ function goToDay(date) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+const WRITE_ACTS = new Set(['toggle', 'sit', 'pick', 'win', 'flip', 'delMatch', 'toastUndo', 'toastRedo']);
+
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-act]');
   const act = t?.dataset.act;
+  if (readOnly && WRITE_ACTS.has(act)) return;
   if (!act) {
     if (selected && !e.target.closest('dialog')) {
       selected = null;
@@ -536,32 +579,22 @@ $('#dayLabel').onclick = (e) => {
 };
 
 $('#undoBtn').onclick = () => {
+  if (readOnly) return;
   selected = null;
   S.undo();
   if (S.canRedo()) toast('Undone');
 };
 $('#redoBtn').onclick = () => {
+  if (readOnly) return;
   selected = null;
   S.redo();
 };
 $('#shuffleBtn').onclick = () => {
+  if (readOnly) return;
   selected = null;
   S.reshuffle();
 };
-
-const openSettings = () => {
-  renderSettings();
-  $('#settingsDlg').showModal();
-};
-$('#settingsBtn').onclick = openSettings;
-
-document.querySelectorAll('dialog').forEach((d) => {
-  d.addEventListener('click', (e) => {
-    const r = d.getBoundingClientRect();
-    const outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
-    if ((e.target === d && outside) || e.target.closest('[data-close]')) d.close();
-  });
-});
+$('#readBtn').onclick = () => setReadOnly(!readOnly);
 
 $('#statsSeg').onclick = (e) => {
   const b = e.target.closest('button');
@@ -587,20 +620,6 @@ $('#statsBody').addEventListener('keydown', (e) => {
   e.preventDefault();
   statsSortFrom(e);
 });
-
-$('#rosterList').onclick = (e) => {
-  const b = e.target.closest('[data-remove]');
-  if (!b) return;
-  const name = b.dataset.remove;
-  if (!confirm(`Remove ${name} from the roster? (Stats are kept.)`)) return;
-  S.setRoster(S.getState().roster.filter((p) => p !== name));
-};
-$('#addPlayerForm').onsubmit = (e) => {
-  e.preventDefault();
-  const n = $('#newPlayer').value.trim();
-  if (n) S.setRoster([...S.getState().roster, n]);
-  $('#newPlayer').value = '';
-};
 
 /** On two sides the ball stays between the teams and stops on the inner edge of each side's letters.
     On a triple it stays to the right of the stacked names and rebounds off the right wall. */

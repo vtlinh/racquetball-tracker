@@ -37,7 +37,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 | Player name                | Include that player in the lineup, or leave them out.                                                                                                          |
 | Coffee cup (beside a name) | Sit that player out, or bring them back. Several players can sit at once.                                                                                      |
 | All / Year / Month, arrows | Stats for all time, a year, or a month, with that period's results by day. Opens on All, and remembers the last choice on this device. All time has no arrows. |
-| Settings                   | Roster, and how scoring works.                                                                                                                                 |
+| Read only                  | Hides the edit buttons and ignores writes: wins, swaps, sit-outs, check-ins, shuffles, undo, redo, and result edits. Tap it again to edit. The choice is remembered on this device. |
 
 Each day in the results shows the score. Played and won are in the stats table. Names are A–Z until you tap a column. Tapping Player lists Z–A, and tapping it again returns to A–Z. On Played, Won, Win %, and Score, the first tap puts the higher value on top, the next tap reverses it, and a third tap returns to A–Z. A down arrow marks higher-first, and an up arrow marks the reverse on those columns.
 
@@ -66,6 +66,6 @@ npm run icons    # regenerate PNG icons
 node tests/mock-api-server.mjs   # local stand-in for the Apps Script API on :8081
 ```
 
-Pushing to `main` runs the tests and publishes the site to the `gh-pages` branch (GitHub Pages). Merge a finished pull request into `main` once its tests pass. That merge is what publishes the site.
+Pushing to `main` runs the tests and publishes the site to the `gh-pages` branch (GitHub Pages). Merge a finished pull request into `main` once its tests pass. That merge is what publishes the site. A newer request steers the work and does not drop one already made. Finish each request and merge it.
 
 GitHub Pages has to be switched on once by a repo admin: **Settings → Pages → Build and deployment → Source: Deploy from a branch**, then pick **`gh-pages`** and **`/ (root)`** and save. The app is then live at https://vtlinh.github.io/racquetball-tracker/ and updates on every push to `main`.
