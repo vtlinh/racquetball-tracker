@@ -245,6 +245,15 @@ test('a restaurant keeps the address picked for it, and maps opens there', () =>
     L.GYM,
   );
   assert.equal(L.formatMiles(fromGym[0].km), '6.7 mi');
+  assert.equal(L.withinSearchMiles(fromGym[0].km), true);
+  assert.equal(L.withinSearchMiles(48.28), true);
+  assert.equal(L.withinSearchMiles(48.29), false);
+  assert.equal(L.withinSearchMiles(undefined), false);
+  const bounds = L.searchBounds();
+  assert.ok(bounds.south < L.GYM.lat && L.GYM.lat < bounds.north);
+  assert.ok(bounds.west < L.GYM.lng && L.GYM.lng < bounds.east);
+  assert.ok(fromGym[0].lat > bounds.south && fromGym[0].lat < bounds.north);
+  assert.ok(fromGym[0].lng > bounds.west && fromGym[0].lng < bounds.east);
   assert.equal(L.placeCity('799 Abbott Blvd, Fort Lee, NJ 07024, USA'), 'Fort Lee');
   assert.equal(L.placeCity('163 Old River Road, Edgewater, New Jersey'), 'Edgewater');
   assert.equal(L.placeCity('Abbott Boulevard, Fort Lee, NJ, USA'), 'Fort Lee');
