@@ -302,7 +302,7 @@ main {
   display: flex;
   gap: 2px;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   margin-top: 4px;
 }
 .pchip {
@@ -325,6 +325,9 @@ main {
   font-size: 22px;
   line-height: 1;
   text-align: center;
+}
+.pchip .mark:empty {
+  display: none;
 }
 .pchip .pname {
   border: 0;
