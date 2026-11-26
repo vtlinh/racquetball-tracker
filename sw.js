@@ -1,4 +1,4 @@
-const CACHE = 'lineup-v23';
+const CACHE = 'lineup-v24';
 const SHELL = [
   './',
   'index.html',

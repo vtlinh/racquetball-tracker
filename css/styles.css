@@ -662,6 +662,11 @@ p.stats.empty {
 .results .res {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.results .res-line {
+  min-width: 0;
 }
 .results time {
   color: var(--muted);
