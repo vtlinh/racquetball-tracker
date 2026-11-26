@@ -171,8 +171,8 @@ main {
 }
 .match:has(.court-floor) {
   background: var(--teal);
-  /* 20% taller than the previous 88px court. */
-  height: calc(88px * 1.2);
+  /* Two 20% increases over the original 88px court. */
+  height: calc(88px * 1.2 * 1.2);
   padding: 0;
   border: 3px solid #d6453d;
   overflow: hidden;
