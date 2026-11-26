@@ -963,7 +963,7 @@ async function searchPlaces(query) {
       region: 'us',
     };
     request.origin = here;
-    request.locationBias = { center: here, radius: 50000 };
+    request.locationRestriction = L.searchBounds(here);
     const { suggestions } = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
     if (seq !== placeSeq) return;
     const predictions = (suggestions || []).map((s) => s.placePrediction).filter(Boolean);
@@ -975,7 +975,7 @@ async function searchPlaces(query) {
         distanceMeters: p.distanceMeters,
         placeId: p.placeId,
       })),
-    );
+    ).filter((place) => L.withinSearchMiles(place.km));
     for (const place of places) place.prediction = byId.get(place.placeId);
     renderPlaceSuggestions(places);
   } catch {

@@ -6,6 +6,30 @@ export const MAX_ON_COURT = 4;
 /** 24 Hour Fitness, 260 Route 4, Paramus. Restaurant distance is measured from here. */
 export const GYM = { lat: 40.913763, lng: -74.049378 };
 
+const MILES_PER_KM = 0.621371;
+
+/** Restaurant search stays inside this many miles of the gym. */
+export const SEARCH_MILES = 30;
+
+/** Box around the gym that contains the search circle. Places outside it are not requested. */
+export function searchBounds(here = GYM) {
+  const km = SEARCH_MILES / MILES_PER_KM + 1;
+  const latDelta = km / 110.574;
+  const lngDelta = km / (111.32 * Math.cos((here.lat * Math.PI) / 180));
+  return {
+    north: here.lat + latDelta,
+    south: here.lat - latDelta,
+    east: here.lng + lngDelta,
+    west: here.lng - lngDelta,
+  };
+}
+
+/** True when a distance in kilometers is known and no farther than the search limit. */
+export function withinSearchMiles(km) {
+  const mi = Number(km) * MILES_PER_KM;
+  return Number.isFinite(mi) && mi <= SEARCH_MILES;
+}
+
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
 const EASTERN = 'America/New_York';
@@ -213,7 +237,7 @@ export function placeCity(address) {
 }
 
 export function formatMiles(km) {
-  const mi = Number(km) * 0.621371;
+  const mi = Number(km) * MILES_PER_KM;
   if (!Number.isFinite(mi)) return '';
   if (mi < 10) return `${(Math.round(mi * 10) / 10).toFixed(1)} mi`;
   return `${Math.round(mi)} mi`;
