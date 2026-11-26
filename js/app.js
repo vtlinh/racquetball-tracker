@@ -610,9 +610,45 @@ function rallyBall() {
   const samples = [];
   let state = null;
   let last = 0;
+  let colorFrom = 0;
+  // Neighbors on the color wheel, with black between red and green.
+  const ballColors = [
+    [46, 186, 98],
+    [54, 126, 232],
+    [138, 86, 222],
+    [232, 98, 174],
+    [220, 56, 62],
+    [14, 14, 18],
+  ];
   const place = (el, x, y) => {
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
+  };
+  // Each color holds, then eases into the next.
+  const ballTone = (elapsed) => {
+    const hold = 3;
+    const blend = 1;
+    const span = hold + blend;
+    const n = ballColors.length;
+    const t = (elapsed / 1000) % (span * n);
+    const i = Math.floor(t / span) % n;
+    const into = t - Math.floor(t / span) * span;
+    const u = into <= hold ? 0 : (into - hold) / blend;
+    const ease = u * u * (3 - 2 * u);
+    const a = ballColors[i];
+    const b = ballColors[(i + 1) % n];
+    return a.map((c, k) => Math.round(c + (b[k] - c) * ease));
+  };
+  const paintBall = (ball, trails, tone) => {
+    const hi = tone.map((c) => Math.round(c + (255 - c) * 0.72));
+    const shade = tone.map((c) => Math.round(c * 0.42));
+    const rgb = (c) => `rgb(${c[0]} ${c[1]} ${c[2]})`;
+    ball.style.background = `radial-gradient(circle at 32% 30%, ${rgb(hi)}, ${rgb(tone)} 42%, ${rgb(shade)} 78%)`;
+    ball.style.boxShadow = `inset -1px -1.5px 2px rgba(${shade[0]}, ${shade[1]}, ${shade[2]}, 0.55), 0 1px 2px rgba(0, 0, 0, 0.35)`;
+    const fill = rgb(tone);
+    trails.forEach((t) => {
+      t.style.background = fill;
+    });
   };
   // Hold the full squash long enough to see, then spring back to round.
   // The ease-out keeps the deep flatten on the bounce instead of carrying it across the court.
@@ -764,6 +800,8 @@ function rallyBall() {
             ? '50% 0%'
             : '50% 100%';
     ball.style.transform = `scale(${(sideways ? flat : bulge).toFixed(3)}, ${(sideways ? bulge : flat).toFixed(3)})`;
+    if (!colorFrom) colorFrom = now;
+    paintBall(ball, trails, ballTone(now - colorFrom));
     place(ball, x, y);
     samples.push({ x, y });
     if (samples.length > 20) samples.shift();

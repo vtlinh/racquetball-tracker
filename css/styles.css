@@ -200,7 +200,7 @@ main {
 }
 .ball-trail {
   z-index: 2;
-  background: #6ea2ff;
+  background: #2eba62;
 }
 .ball-trail.a {
   opacity: 0.32;
@@ -213,9 +213,9 @@ main {
 }
 .ball {
   z-index: 3;
-  background: radial-gradient(circle at 32% 30%, #f7fbff, #5b98ff 42%, #1a4eab 78%);
+  background: radial-gradient(circle at 32% 30%, #c5ecd3, #2eba62 42%, #134d29 78%);
   box-shadow:
-    inset -1px -1.5px 2px rgba(8, 24, 64, 0.45),
+    inset -1px -1.5px 2px rgba(19, 77, 41, 0.55),
     0 1px 2px rgba(0, 0, 0, 0.35);
   left: 22%;
   top: 30%;
