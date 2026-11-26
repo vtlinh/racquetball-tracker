@@ -298,9 +298,6 @@ main {
 .teams[data-sides='3'] .team {
   grid-row: 1;
 }
-.teams[data-sides='3'] .team:nth-child(1) {
-  flex-direction: row-reverse;
-}
 .team {
   min-width: 0;
   display: flex;
