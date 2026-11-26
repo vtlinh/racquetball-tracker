@@ -648,7 +648,7 @@ function rallyBall() {
   };
   // Each color holds, then eases into the next.
   const ballTone = (elapsed) => {
-    const hold = 3;
+    const hold = 2;
     const blend = 1;
     const span = hold + blend;
     const n = ballColors.length;
