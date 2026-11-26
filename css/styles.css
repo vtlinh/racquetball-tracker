@@ -825,6 +825,7 @@ dialog::backdrop {
 }
 .meal-who select,
 .meal-item select {
+  min-width: 64px;
   height: 36px;
   border-radius: 8px;
   border: 1px solid var(--line);

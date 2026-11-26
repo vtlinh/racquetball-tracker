@@ -445,11 +445,10 @@ function dayGroup(day) {
   </details>`;
 }
 
-function weightOptions(selected, average) {
-  const blank =
-    average == null ? '' : `<option value=""${selected == null ? ' selected' : ''}>${L.formatWeight(average)}</option>`;
+function weightOptions(selected, blank) {
+  const empty = blank ? `<option value=""${selected == null ? ' selected' : ''}></option>` : '';
   return (
-    blank +
+    empty +
     L.MEAL_WEIGHTS.map((w) => `<option value="${w}"${w === selected ? ' selected' : ''}>${w}</option>`).join('')
   );
 }
@@ -499,7 +498,7 @@ function renderMealList() {
           const avg = L.restaurantWeight(r, picks);
           const minePick = mine ? (picks[mineKey]?.[r.name] ?? null) : null;
           const select = mine
-            ? `<select data-my-weight="${name}" aria-label="Your weight for ${name}" title="Your weight. The average is used when you have not picked"${readOnly ? ' disabled' : ''}>${weightOptions(minePick, avg)}</select>`
+            ? `<select data-my-weight="${name}" aria-label="Your weight for ${name}" title="Leave blank to use the average"${readOnly ? ' disabled' : ''}>${weightOptions(minePick, true)}</select>`
             : `<select data-meal-weight="${name}" aria-label="Weight for ${name}" title="List weight, 5 is picked most often"${readOnly ? ' disabled' : ''}>${weightOptions(r.weight)}</select>`;
           return `<div class="meal-item">
             <span class="meal-name"><span class="meal-label">${name}</span> <span class="meal-avg">(${L.formatWeight(avg)})</span></span>
