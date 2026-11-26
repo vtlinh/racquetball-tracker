@@ -129,7 +129,6 @@ function renderPlayers(live, history) {
   const { roster } = S.getState();
   const played = history.flatMap((m) => [...m.sides.flat(), ...(m.out || [])]);
   const names = [...new Set([...roster, ...live.present, ...played])].sort(byName);
-  const st = L.playerStats(history, names);
   const stars = L.dayStars(history);
   const m = live.match;
   put(
@@ -138,14 +137,11 @@ function renderPlayers(live, history) {
       .map((p) => {
         const here = live.present.includes(p);
         const out = !!m?.out.includes(p);
-        const r = st[p];
-        return `<div class="prow ${here ? '' : 'away'}">
-          <span class="pname">${esc(p)}${star(p, stars)}</span>
-          <span>${r.played}</span><span>${r.wins}</span>
-          <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" ${here ? '' : 'disabled'}
+        return `<div class="pchip ${here ? '' : 'away'}">
+          <button class="pname ${here ? 'on' : ''}" data-act="toggle" data-name="${esc(p)}" aria-pressed="${here}"
+            title="${here ? `${esc(p)} is in the lineup — tap to leave` : `Include ${esc(p)} in the lineup`}">${esc(p)}${star(p, stars)}</button>
+          <button class="btn sit ${out ? 'on' : ''}" data-act="sit" data-name="${esc(p)}" aria-pressed="${out}" ${here ? '' : 'disabled'}
             title="${out ? `${esc(p)} is sitting out — tap to bring back` : `Sit ${esc(p)} out`}">${icon('coffee')}</button>
-          <button class="btn here ${here ? 'on' : ''}" data-act="toggle" data-name="${esc(p)}" aria-pressed="${here}"
-            title="${here ? 'Here — tap if leaving' : 'Tap to check in'}">${icon(here ? 'here' : 'away')}</button>
         </div>`;
       })
       .join(''),
@@ -305,9 +301,9 @@ function refusedSwap() {
 function onSit(name) {
   const m = S.getState().live.match;
   if (!m) return;
-  if (m.out.includes(name)) S.unbench(name);
-  else if (m.out.length) S.swap(name, m.out[0]);
-  else S.bench(name);
+  const changed = m.out.includes(name) ? S.unbench(name) : S.bench(name);
+  if (changed) return;
+  toast(m.out.includes(name) ? 'Four players are already on court' : 'Two players stay on court');
 }
 
 function goToDay(date) {

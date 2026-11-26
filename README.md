@@ -7,12 +7,12 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 ## How lineups are picked
 
-- Tap the circle-check on a player's row to check them in or out (default roster: Rick, Leo, Linh, Nate, Doug). Anyone can join or leave mid-day, and the teams are reshuffled when they do.
+- Tap a player's name to include them in the lineup or leave them out (default roster: Rick, Leo, Linh, Nate, Doug). Anyone can join or leave mid-day, and the teams are reshuffled when they do.
 - **5 players:** 2v2 with one sitting out. At the start the sitter is random. After a result, the sitter comes from the losing team: whoever has played the most today (ties are broken randomly). The previous sitter always comes back in.
 - **4 players:** 2v2, nobody sits out.
 - **3 players:** cut-throat (one winner). **2 players:** 1v1.
 - **The winning pair is never teamed together in the next match.** Among the remaining options, the split with the fewest repeat teammates today is picked, so pairings spread out.
-- **Manual overrides:** tap a name, then tap another name to swap them (works between teams and the "Out" player). The coffee cup on a player's row sits them out: with someone already out they trade places, and with nobody out (4 players) the game becomes cut-throat. Tap the cup again to bring them back. An override applies to that match only.
+- **Manual overrides:** tap a name on the court, then tap another name to swap them (works between teams and the "Out" players). The coffee cup under a name sits that player out, and more than one player can sit. Tap the cup again to bring them back while the court has room for them. An override applies to that match only.
 - **Changing who sits out always reshuffles the teams**, so the player coming in doesn't just take the old spot. A swap that would put the last winning pair on the same team is refused, so that rule holds for manual changes too.
 - The shuffle button re-splits the current players into a different legal pairing.
 
@@ -32,12 +32,12 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 | Redo | Puts back the last undone result change. It appears only after an undo, and a new result clears it. |
 | Shuffle | Re-split the teams. |
 | ‹ date › | Pick the day results are recorded on. |
-| Coffee cup (player row) | Sit that player out (or bring them back). |
-| Circle-check (player row) | Check the player in or out. |
+| Player name | Include that player in the lineup, or leave them out. |
+| Coffee cup (under a name) | Sit that player out, or bring them back. Several players can sit at once. |
 | Month / Year, arrows | Stats for a month or year, with that period's results by day. |
 | "Saved in this browser." | Tap it for settings: roster and the Google Sheet connection. |
 
-The player rows show played and won for the day shown at the top.
+Played and won for the day are in the results at the bottom.
 
 ## Google Sheet storage
 
