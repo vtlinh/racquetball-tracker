@@ -27,16 +27,21 @@ export function addDays(date, n) {
   return `${utc.getUTCFullYear()}-${p(utc.getUTCMonth() + 1)}-${p(utc.getUTCDate())}`;
 }
 
-/** Trimmed restaurant names, first spelling kept, later case-duplicates dropped. */
+/** Weights a restaurant can have. 5 is picked most often. */
+export const MEAL_WEIGHTS = [1, 2, 3, 4, 5];
+
+/** Trimmed restaurant names, first spelling kept, later case-duplicates dropped.
+    A plain string weighs 1. Anything outside 1–5 becomes 1. */
 export function cleanRestaurants(list) {
   const out = [];
   const seen = new Set();
   for (const raw of list || []) {
-    const name = String(raw).trim().replace(/\s+/g, ' ');
+    const name = String(raw?.name ?? raw ?? '').trim().replace(/\s+/g, ' ');
     const key = name.toLocaleLowerCase();
     if (!name || seen.has(key)) continue;
     seen.add(key);
-    out.push(name);
+    const weight = Math.round(Number(raw?.weight));
+    out.push({ name, weight: MEAL_WEIGHTS.includes(weight) ? weight : 1 });
   }
   return out;
 }
@@ -54,28 +59,141 @@ function nextRand(n) {
   return (n ^ (n >>> 16)) >>> 0;
 }
 
-function chooseRestaurant(names, prev, n) {
-  const choices = names.length > 1 && prev ? names.filter((name) => name !== prev) : names;
-  return (choices.length ? choices : names)[n % (choices.length || names.length)];
+/** One weight per person per restaurant still on the list. Blank and out-of-range picks are dropped. */
+export function cleanMealPicks(picks, restaurants) {
+  const list = cleanRestaurants(restaurants);
+  const byKey = new Map(list.map((r) => [r.name.toLocaleLowerCase(), r.name]));
+  const out = {};
+  const seen = new Set();
+  for (const [person, weights] of Object.entries(picks || {})) {
+    const who = String(person).trim().replace(/\s+/g, ' ');
+    const key = who.toLocaleLowerCase();
+    if (!who || seen.has(key) || !weights || typeof weights !== 'object') continue;
+    seen.add(key);
+    const mine = {};
+    for (const [rawName, rawWeight] of Object.entries(weights)) {
+      const canonical = byKey.get(String(rawName).trim().replace(/\s+/g, ' ').toLocaleLowerCase());
+      const weight = Math.round(Number(rawWeight));
+      if (!canonical || !MEAL_WEIGHTS.includes(weight)) continue;
+      mine[canonical] = weight;
+    }
+    if (Object.keys(mine).length) out[who] = mine;
+  }
+  return out;
+}
+
+/** Name → browser id. The first spelling and the first browser for a name win. */
+export function cleanClaims(claims) {
+  const out = {};
+  const names = new Set();
+  const devices = new Set();
+  for (const [person, device] of Object.entries(claims || {})) {
+    const who = String(person).trim().replace(/\s+/g, ' ');
+    const id = String(device || '').trim();
+    const key = who.toLocaleLowerCase();
+    if (!who || !id || names.has(key) || devices.has(id)) continue;
+    names.add(key);
+    devices.add(id);
+    out[who] = id;
+  }
+  return out;
+}
+
+/** Claim `name` for this browser. A name another browser already holds is refused. */
+export function nextClaims(claims, roster, name, deviceId) {
+  const clean = cleanClaims(claims);
+  const id = String(deviceId || '').trim();
+  const wanted = String(name || '').trim().replace(/\s+/g, ' ');
+  const match = (roster || []).find((n) => n.toLocaleLowerCase() === wanted.toLocaleLowerCase());
+  if (!id || !match) return { ok: false, claims: clean };
+  const holder = Object.entries(clean).find(([n]) => n.toLocaleLowerCase() === match.toLocaleLowerCase());
+  if (holder && holder[1] !== id) return { ok: false, claims: clean };
+  const next = {};
+  for (const [n, dev] of Object.entries(clean)) if (dev !== id) next[n] = dev;
+  next[match] = id;
+  return { ok: true, claims: next };
+}
+
+/** Drop this browser's claim. The name is free for someone else. */
+export function releaseClaims(claims, deviceId) {
+  const id = String(deviceId || '').trim();
+  const clean = cleanClaims(claims);
+  const next = {};
+  let who = '';
+  for (const [n, dev] of Object.entries(clean)) {
+    if (dev === id) who = n;
+    else next[n] = dev;
+  }
+  return { who, claims: next };
+}
+
+function votesFor(restaurant, picks) {
+  const key = restaurant.toLocaleLowerCase();
+  const votes = [];
+  for (const weights of Object.values(picks || {})) {
+    for (const [name, weight] of Object.entries(weights || {})) {
+      if (name.toLocaleLowerCase() === key) votes.push(weight);
+    }
+  }
+  return votes;
+}
+
+function weightParts(entry, picks) {
+  const votes = votesFor(entry.name, picks);
+  if (!votes.length) return [entry.weight, 1];
+  return [votes.reduce((sum, w) => sum + w, 0), votes.length];
+}
+
+/** Highest weight first. Equal weights are ordered by name. */
+export function rankedRestaurants(list, picks = {}) {
+  const entries = cleanRestaurants(list);
+  const votes = cleanMealPicks(picks, entries);
+  return [...entries].sort((a, b) => {
+    const [an, ad] = weightParts(a, votes);
+    const [bn, bd] = weightParts(b, votes);
+    const byRank = bn * ad - an * bd;
+    if (byRank) return byRank;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  });
+}
+
+function chooseRestaurant(entries, prev, n, picks) {
+  let choices = entries.length > 1 && prev ? entries.filter((e) => e.name !== prev) : entries;
+  if (!choices.length) choices = entries;
+  const parts = choices.map((entry) => {
+    const votes = votesFor(entry.name, picks);
+    const weight = votes.length ? votes.reduce((sum, w) => sum + w, 0) / votes.length : entry.weight;
+    return { name: entry.name, weight };
+  });
+  const total = parts.reduce((sum, part) => sum + part.weight, 0);
+  let roll = (n / 4294967296) * total;
+  for (const part of parts) {
+    if (roll < part.weight) return part.name;
+    roll -= part.weight;
+  }
+  return parts[parts.length - 1].name;
 }
 
 /** The place for `date`. `gameDays` are dates that already have games.
     The first game day seeds the sequence. Each later game day calls next() once.
     A day with no games is not a step, so it does not move the days after it.
+    A higher weight is picked more often. Personal picks average together, and a name
+    that did not pick counts as that average. The list weight is used when nobody picked.
     The next game day gets a different place unless the list has only one. */
-export function restaurantFor(date, list, gameDays = []) {
-  const names = cleanRestaurants(list);
-  if (!names.length) return '';
-  if (names.length === 1) return names[0];
+export function restaurantFor(date, list, gameDays = [], picks = {}) {
+  const entries = rankedRestaurants(list, picks);
+  const votes = cleanMealPicks(picks, entries);
+  if (!entries.length) return '';
+  if (entries.length === 1) return entries[0].name;
   const days = [...new Set((gameDays || []).filter((d) => d && d < date))].sort();
   days.push(date);
   let n = seedFromDay(days[0]);
   let prev = '';
-  let pick = chooseRestaurant(names, prev, n);
+  let pick = chooseRestaurant(entries, prev, n, votes);
   for (let i = 1; i < days.length; i++) {
     n = nextRand(n);
     prev = pick;
-    pick = chooseRestaurant(names, prev, n);
+    pick = chooseRestaurant(entries, prev, n, votes);
   }
   return pick;
 }

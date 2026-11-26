@@ -35,6 +35,8 @@ function blank() {
   return {
     roster: [...L.DEFAULT_ROSTER],
     restaurants: [],
+    mealPicks: {},
+    claims: {},
     live: blankLive(),
     log: {},
     undo: [],
@@ -91,6 +93,13 @@ function commit(next, { remoteState = true } = {}) {
   persist();
   emit();
   scheduleFlush();
+}
+
+/** Local bookkeeping that must not look newer than the sheet. */
+function note(next) {
+  state = { ...state, ...next };
+  persist();
+  emit();
 }
 
 // ---- the day being viewed/recorded (this device only) --------------------
@@ -254,7 +263,7 @@ export function rollDay(today = L.localDate(), rng = Math.random) {
     commit({ live: { present: [...live.present], match, day: today } });
     return true;
   }
-  commit({ live: { ...live, day: today } }, { remoteState: false });
+  note({ live: { ...live, day: today } });
   return false;
 }
 
@@ -311,9 +320,50 @@ export function gameDates() {
 
 export function setRestaurants(list) {
   const clean = L.cleanRestaurants(list);
-  const prev = state.restaurants || [];
-  if (clean.length === prev.length && clean.every((n, i) => n === prev[i])) return;
-  commit({ restaurants: clean });
+  const picks = L.cleanMealPicks(state.mealPicks, clean);
+  const prev = L.cleanRestaurants(state.restaurants);
+  const prevPicks = L.cleanMealPicks(state.mealPicks, prev);
+  const sameList =
+    clean.length === prev.length && clean.every((r, i) => r.name === prev[i].name && r.weight === prev[i].weight);
+  if (sameList && JSON.stringify(picks) === JSON.stringify(prevPicks)) return;
+  commit({ restaurants: clean, mealPicks: picks });
+}
+
+export function myName(deviceId) {
+  const id = String(deviceId || '');
+  return Object.entries(L.cleanClaims(state.claims)).find(([, dev]) => dev === id)?.[0] || '';
+}
+
+export function setMealPick(person, restaurant, weight) {
+  const list = L.cleanRestaurants(state.restaurants);
+  const picks = L.cleanMealPicks(state.mealPicks, list);
+  const who = String(person || '').trim();
+  const place = list.find((r) => r.name.toLocaleLowerCase() === String(restaurant || '').trim().toLocaleLowerCase());
+  if (!who || !place) return;
+  const key = Object.keys(picks).find((n) => n.toLocaleLowerCase() === who.toLocaleLowerCase()) || who;
+  const mine = { ...(picks[key] || {}) };
+  const w = Math.round(Number(weight));
+  if (L.MEAL_WEIGHTS.includes(w)) mine[place.name] = w;
+  else delete mine[place.name];
+  const next = { ...picks };
+  if (Object.keys(mine).length) next[key] = mine;
+  else delete next[key];
+  const cleaned = L.cleanMealPicks(next, list);
+  if (JSON.stringify(cleaned) === JSON.stringify(picks)) return;
+  commit({ mealPicks: cleaned });
+}
+
+export function claimName(name, deviceId) {
+  const result = L.nextClaims(state.claims, state.roster, name, deviceId);
+  if (!result.ok) return false;
+  if (JSON.stringify(result.claims) !== JSON.stringify(L.cleanClaims(state.claims))) commit({ claims: result.claims });
+  return true;
+}
+
+export function releaseClaim(deviceId) {
+  const result = L.releaseClaims(state.claims, deviceId);
+  if (!result.who) return;
+  if (JSON.stringify(result.claims) !== JSON.stringify(L.cleanClaims(state.claims))) commit({ claims: result.claims });
 }
 
 export function setRoster(roster) {
@@ -366,6 +416,8 @@ function adoptRemote(remote) {
       next.undo = data.undo || [];
       next.redo = data.redo || [];
       if (Array.isArray(data.restaurants)) next.restaurants = data.restaurants;
+      if (data.mealPicks && typeof data.mealPicks === 'object') next.mealPicks = data.mealPicks;
+      if (data.claims && typeof data.claims === 'object') next.claims = data.claims;
     } else if (data.session) {
       Object.assign(next, fromV1(data.session), { undo: [], redo: [] });
     }
@@ -428,6 +480,8 @@ async function drain() {
           undo: state.undo,
           redo: state.redo,
           restaurants: state.restaurants || [],
+          mealPicks: state.mealPicks || {},
+          claims: state.claims || {},
         },
       });
       if (res.stale && res.state) adoptRemote(res);

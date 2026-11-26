@@ -19,7 +19,27 @@ const teammates = (sides, a, b) => sides.some((t) => t.includes(a) && t.includes
 
 test('a day always picks the same restaurant, and the next game day picks another', () => {
   const list = ['Pho', ' pho ', 'Pizza', 'Tacos', 'Ramen'];
-  assert.deepEqual(L.cleanRestaurants(list), ['Pho', 'Pizza', 'Tacos', 'Ramen']);
+  assert.deepEqual(L.cleanRestaurants(list), [
+    { name: 'Pho', weight: 1 },
+    { name: 'Pizza', weight: 1 },
+    { name: 'Tacos', weight: 1 },
+    { name: 'Ramen', weight: 1 },
+  ]);
+  assert.deepEqual(
+    L.cleanRestaurants([
+      { name: ' Pho ', weight: 5 },
+      { name: 'pho', weight: 2 },
+      { name: 'Pizza', weight: 9 },
+      { name: 'Tacos', weight: 0 },
+      'Ramen',
+    ]),
+    [
+      { name: 'Pho', weight: 5 },
+      { name: 'Pizza', weight: 1 },
+      { name: 'Tacos', weight: 1 },
+      { name: 'Ramen', weight: 1 },
+    ],
+  );
   assert.equal(L.restaurantFor('2026-01-01', ['  '], []), '');
   assert.equal(L.restaurantFor('2026-01-01', ['Pho'], ['2026-01-01']), 'Pho');
   assert.equal(L.restaurantFor('2026-01-02', ['Pho'], ['2026-01-01', '2026-01-02']), 'Pho');
@@ -62,6 +82,93 @@ test('a day always picks the same restaurant, and the next game day picks anothe
     L.restaurantFor('2026-01-05', names, ['2026-01-01', '2026-01-05']),
     'a game day in the gap takes its own next(), so the day after it moves',
   );
+
+  const weighted = [
+    { name: 'Pho', weight: 5 },
+    { name: 'Pizza', weight: 1 },
+    { name: 'Tacos', weight: 1 },
+  ];
+  const weightedDays = Array.from({ length: 90 }, (_, i) => L.addDays('2026-03-01', i));
+  const heavy = weightedDays.map((d) => L.restaurantFor(d, weighted, weightedDays));
+  const counts = { Pho: 0, Pizza: 0, Tacos: 0 };
+  for (const name of heavy) counts[name]++;
+  assert.ok(counts.Pho > counts.Pizza && counts.Pho > counts.Tacos, `weight 5 leads the draws: ${JSON.stringify(counts)}`);
+  for (let i = 1; i < heavy.length; i++) assert.notEqual(heavy[i], heavy[i - 1]);
+  assert.deepEqual(
+    heavy,
+    weightedDays.map((d) => L.restaurantFor(d, weighted, weightedDays)),
+  );
+  const even = weightedDays.map((d) => L.restaurantFor(d, ['Pho', 'Pizza', 'Tacos'], weightedDays));
+  assert.notDeepEqual(heavy, even, 'raising a weight changes the sequence');
+});
+
+test('personal weights average, and a name that did not pick counts as that average', () => {
+  const list = [
+    { name: 'Pho', weight: 1 },
+    { name: 'Pizza', weight: 1 },
+    { name: 'Tacos', weight: 1 },
+  ];
+  const days = Array.from({ length: 40 }, (_, i) => L.addDays('2026-04-01', i));
+  const asBase = (weight) =>
+    days.map((d) =>
+      L.restaurantFor(
+        d,
+        list.map((r) => ({ ...r, weight: r.name === 'Pho' ? weight : 1 })),
+        days,
+      ),
+    );
+  assert.deepEqual(
+    days.map((d) => L.restaurantFor(d, list, days, { Linh: { Pho: 5 } })),
+    asBase(5),
+    'one vote of 5 is not pulled down by names that left it blank',
+  );
+  assert.deepEqual(
+    days.map((d) => L.restaurantFor(d, list, days, { Linh: { Pho: 5 }, Rick: { Pho: 1 } })),
+    asBase(3),
+    '5 and 1 average to 3',
+  );
+  assert.deepEqual(L.cleanMealPicks({ Linh: { Pho: 9, Gone: 2 }, ' rick ': { pho: 4 } }, list), {
+    rick: { Pho: 4 },
+  });
+});
+
+test('restaurants are ordered by weight, then by name', () => {
+  assert.deepEqual(
+    L.rankedRestaurants([
+      { name: 'Tacos', weight: 1 },
+      { name: 'ramen', weight: 5 },
+      { name: 'Pho', weight: 5 },
+      { name: 'Pizza', weight: 3 },
+    ]).map((r) => r.name),
+    ['Pho', 'ramen', 'Pizza', 'Tacos'],
+  );
+  assert.deepEqual(
+    L.rankedRestaurants(
+      [
+        { name: 'Tacos', weight: 1 },
+        { name: 'Pho', weight: 5 },
+        { name: 'Ramen', weight: 5 },
+        { name: 'Pizza', weight: 3 },
+      ],
+      { Linh: { Pho: 1, Pizza: 5 } },
+    ).map((r) => r.name),
+    ['Pizza', 'Ramen', 'Pho', 'Tacos'],
+    'a personal pick replaces the list weight in the ranking',
+  );
+});
+
+test('a browser can claim a free name, and not one another browser holds', () => {
+  const roster = ['Linh', 'Rick'];
+  const claim = L.nextClaims({}, roster, 'Linh', 'dev-a');
+  assert.equal(claim.ok, true);
+  assert.deepEqual(claim.claims, { Linh: 'dev-a' });
+  assert.equal(L.nextClaims(claim.claims, roster, 'Linh', 'dev-b').ok, false);
+  assert.deepEqual(L.nextClaims(claim.claims, roster, 'Rick', 'dev-a').claims, { Rick: 'dev-a' });
+  const freed = L.releaseClaims(claim.claims, 'dev-a');
+  assert.equal(freed.who, 'Linh');
+  assert.deepEqual(freed.claims, {});
+  assert.equal(L.nextClaims(freed.claims, roster, 'Linh', 'dev-b').ok, true);
+  assert.deepEqual(L.cleanClaims({ Linh: 'dev-a', linh: 'dev-b', Rick: 'dev-a' }), { Linh: 'dev-a' });
 });
 
 test('player count decides the format; only 5+ forces a sit-out', () => {
