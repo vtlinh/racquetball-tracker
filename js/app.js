@@ -77,16 +77,18 @@ function renderCourt(live) {
     put(el, `<p class="empty">${n ? 'Need at least 2 players' : 'Check in who’s here below'}</p>`);
     return;
   }
-  const letters = 'ABC';
-  const teams = m.sides.map(
-    (team, i) => `
+  const teams = m.sides.map((team, i) => {
+    const label = `${esc(team.join(' + '))} won`;
+    return `
       <div class="team">
-        <div class="team-label">Team ${letters[i]}</div>
         <div class="team-names">${team.map((p) => nameBtn(p)).join('')}</div>
-        <button class="win" data-act="win" data-side="${i}" title="${esc(team.join(' + '))} won">${icon('trophy')}Win</button>
-      </div>`,
+        <button class="win" data-act="win" data-side="${i}" title="${label}" aria-label="${label}">${icon('trophy')}</button>
+      </div>`;
+  });
+  put(
+    el,
+    `<div class="teams" data-sides="${m.sides.length}">${teams.join('<div class="vs"><span>vs</span></div>')}</div>`,
   );
-  put(el, `<div class="teams">${teams.join('<div class="vs"><span>vs</span></div>')}</div>`);
 }
 
 function renderOut(live, history) {
