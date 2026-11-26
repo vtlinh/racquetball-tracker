@@ -76,11 +76,16 @@ function playedDates() {
     .sort();
 }
 
-/** The nearest played day strictly before (dir < 0) or after the day on screen. */
+/** The nearest played day before the day on screen, or the next played day.
+    The forward arrow can also land on today when today has no games yet. */
 function neighborDay(dir) {
   const date = S.getViewDate();
   const dates = playedDates();
-  return dir < 0 ? dates.filter((d) => d < date).at(-1) : dates.find((d) => d > date);
+  if (dir < 0) return dates.filter((d) => d < date).at(-1);
+  const next = dates.find((d) => d > date);
+  const today = L.localDate();
+  if (!next && date < today) return today;
+  return next;
 }
 
 function renderDay() {
