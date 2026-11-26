@@ -166,6 +166,43 @@ test('a removed restaurant keeps its score and comes back with the same weight',
   assert.deepEqual(L.withRestaurant(back, 'Pho'), back);
 });
 
+test('a restaurant keeps the address picked for it, and maps opens there', () => {
+  const added = L.withRestaurant([], {
+    name: ' Near ',
+    address: ' 10 Main St, Reston, VA ',
+    lat: 38.96,
+    lng: -77.36,
+    km: 1,
+  });
+  assert.deepEqual(added, [{ name: 'Near', weight: 1, address: '10 Main St, Reston, VA', lat: 38.96, lng: -77.36 }]);
+  const moved = L.updateRestaurantAddress(added, 'near', { name: 'Other', address: '1 Oak St', lat: 1, lng: 2 });
+  assert.equal(moved[0].name, 'Near');
+  assert.equal(moved[0].weight, 1);
+  assert.equal(moved[0].address, '1 Oak St');
+  assert.equal(moved[0].lat, 1);
+  assert.equal(L.mapsUrl({ name: 'Near' }, 'web'), '');
+  assert.equal(L.mapsUrl(moved[0], 'web'), 'https://www.google.com/maps/search/?api=1&query=1%2C2');
+  assert.match(L.mapsUrl(moved[0], 'android'), /^geo:1,2\?q=1,2\(/);
+  assert.match(L.mapsUrl(moved[0], 'ios'), /^https:\/\/maps\.apple\.com\/\?ll=1,2&q=Near$/);
+  const places = L.placesFromPhoton(
+    [
+      { properties: { name: 'Far', street: 'A St', city: 'Farville', state: 'NJ' }, geometry: { coordinates: [-74, 40.8] } },
+      {
+        properties: { name: 'Near', housenumber: '10', street: 'Main St', city: 'Reston', state: 'VA' },
+        geometry: { coordinates: [-77.36, 38.96] },
+      },
+    ],
+    { lat: 38.95, lng: -77.35 },
+  );
+  assert.deepEqual(
+    places.map((p) => p.name),
+    ['Near', 'Far'],
+  );
+  assert.equal(places[0].address, '10 Main St, Reston, VA');
+  assert.ok(places[0].km < places[1].km);
+  assert.equal(L.formatMiles(places[0].km), '0.9 mi');
+});
+
 test('restaurants are ordered by weight, then by name', () => {
   assert.deepEqual(
     L.rankedRestaurants([

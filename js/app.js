@@ -453,11 +453,24 @@ function weightOptions(selected, blank) {
   );
 }
 
+function mapsPlatform() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/.test(ua)) return 'ios';
+  if (/Android/.test(ua)) return 'android';
+  return 'web';
+}
+
 function renderMeal() {
   const date = S.getViewDate();
   const state = S.getState();
   const name = L.restaurantFor(date, state.restaurants, S.gameDates(), state.mealPicks);
-  $('#mealText').textContent = name ? `Eating at ${name}` : 'No restaurant yet';
+  const place = L.cleanRestaurants(state.restaurants).find((r) => !r.removed && r.name === name);
+  const url = place ? L.mapsUrl(place, mapsPlatform()) : '';
+  const text = name ? `Eating at ${esc(name)}` : 'No restaurant yet';
+  put(
+    $('#mealText'),
+    url ? `<a class="meal-link" href="${esc(url)}" title="${esc(place.address || name)}">${text}</a>` : text,
+  );
   if ($('#mealDlg').open) {
     renderMealWho();
     renderMealList();
@@ -502,7 +515,7 @@ function renderMealList() {
             ? `<select data-my-weight="${name}" aria-label="Your score for ${name}" title="Leave blank to use the average"${readOnly ? ' disabled' : ''}>${weightOptions(minePick, true)}</select>`
             : `<select aria-label="Score for ${name}" title="Claim a name to pick a score" disabled>${weightOptions(null, true)}</select>`;
           return `<div class="meal-item">
-            <span class="meal-name"><span class="meal-label">${name}</span> <span class="meal-avg">(${L.formatWeight(avg)})</span></span>
+            <span class="meal-name"><button type="button" class="meal-label" data-address="${name}" title="Change address">${name}</button> <span class="meal-avg">(${L.formatWeight(avg)})</span></span>
             ${select}
             <button class="x" data-remove-meal="${name}" title="Remove ${name}">${icon('x')}</button>
           </div>`;
@@ -524,6 +537,7 @@ function setReadOnly(on) {
   t.hidden = true;
   clearTimeout(toastTimer);
   if ($('#mealDlg').open) $('#mealDlg').close();
+  if ($('#placeDlg').open) $('#placeDlg').close();
   render();
 }
 
@@ -709,10 +723,15 @@ $('#mealDlg').addEventListener('click', (e) => {
 $('#mealList').onclick = (e) => {
   if (readOnly) return;
   const b = e.target.closest('[data-remove-meal]');
-  if (!b) return;
-  $('#removeMealName').textContent = b.dataset.removeMeal;
-  $('#removeMealDlg').showModal();
+  if (b) {
+    $('#removeMealName').textContent = b.dataset.removeMeal;
+    $('#removeMealDlg').showModal();
+    return;
+  }
+  const name = e.target.closest('[data-address]');
+  if (name) openPlace(name.dataset.address);
 };
+$('#addMealBtn').onclick = () => openPlace('');
 $('#removeMealDlg').addEventListener('click', (e) => {
   const d = $('#removeMealDlg');
   const yes = e.target.closest('[data-remove="yes"]');
@@ -743,13 +762,135 @@ $('#mealList').addEventListener('change', (e) => {
     return;
   }
 });
-$('#mealForm').onsubmit = (e) => {
-  e.preventDefault();
+let placeEdit = '';
+let placeHere = null;
+let placeAsked = false;
+let placeTimer = 0;
+let placeAbort = null;
+let placeSeq = 0;
+
+function askLocation() {
+  if (placeAsked || !navigator.geolocation) return;
+  placeAsked = true;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      placeHere = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      const q = $('#placeQuery').value.trim();
+      if ($('#placeDlg').open && q.length >= 2) searchPlaces(q);
+    },
+    () => {},
+    { enableHighAccuracy: false, maximumAge: 60000, timeout: 8000 },
+  );
+}
+
+function openPlace(name) {
   if (readOnly) return;
-  const n = $('#newMeal').value.trim();
-  if (n) S.setRestaurants(L.withRestaurant(S.getState().restaurants, n));
-  $('#newMeal').value = '';
+  placeEdit = name || '';
+  $('#placeTitle').textContent = placeEdit || 'Add restaurant';
+  $('#placeQuery').value = placeEdit;
+  $('#placeSuggest').innerHTML = '';
+  $('#placeDlg').showModal();
+  askLocation();
+  setTimeout(() => {
+    if ($('#placeDlg').open) $('#placeQuery').focus();
+  }, 0);
+  if (placeEdit.length >= 2) searchPlaces(placeEdit);
+}
+
+function pickPlace(place) {
+  const list = S.getState().restaurants;
+  const next = placeEdit ? L.updateRestaurantAddress(list, placeEdit, place) : L.withRestaurant(list, place);
+  S.setRestaurants(next);
+  placeEdit = '';
+  $('#placeDlg').close();
+}
+
+function renderPlaceSuggestions(places) {
+  const box = $('#placeSuggest');
+  if (!places.length) {
+    box.innerHTML = '<p class="muted">No matches</p>';
+    return;
+  }
+  box.innerHTML = places
+    .map((place, i) => {
+      const where = [placeHere ? L.formatMiles(place.km) : '', place.address].filter(Boolean).join(' · ');
+      return `<button type="button" data-place="${i}"><span class="place-name">${esc(place.name)}</span>${
+        where ? `<span class="place-addr">${esc(where)}</span>` : ''
+      }</button>`;
+    })
+    .join('');
+  box._places = places;
+}
+
+async function fetchPhoton(query, here, bounded, signal) {
+  const url = new URL('https://photon.komoot.io/api/');
+  url.searchParams.set('q', query);
+  url.searchParams.set('limit', '8');
+  url.searchParams.set('lang', 'en');
+  if (here) {
+    url.searchParams.set('lat', String(here.lat));
+    url.searchParams.set('lon', String(here.lng));
+    if (bounded) {
+      const dLat = 0.45;
+      const dLng = 0.45 / Math.max(0.2, Math.cos((here.lat * Math.PI) / 180));
+      url.searchParams.set(
+        'bbox',
+        [here.lng - dLng, here.lat - dLat, here.lng + dLng, here.lat + dLat].map((n) => n.toFixed(4)).join(','),
+      );
+    }
+  }
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(String(res.status));
+  const data = await res.json();
+  return data.features || [];
+}
+
+async function searchPlaces(query) {
+  const seq = ++placeSeq;
+  placeAbort?.abort();
+  const ctrl = new AbortController();
+  placeAbort = ctrl;
+  const here = placeHere;
+  try {
+    let features = await fetchPhoton(query, here, true, ctrl.signal);
+    if (seq !== placeSeq) return;
+    if (here && !features.length) features = await fetchPhoton(query, here, false, ctrl.signal);
+    if (seq !== placeSeq) return;
+    renderPlaceSuggestions(L.placesFromPhoton(features, here));
+  } catch (err) {
+    if (err?.name === 'AbortError' || seq !== placeSeq) return;
+    renderPlaceSuggestions([]);
+  }
+}
+
+$('#placeQuery').addEventListener('input', () => {
+  const q = $('#placeQuery').value.trim();
+  clearTimeout(placeTimer);
+  if (q.length < 2) {
+    placeSeq += 1;
+    placeAbort?.abort();
+    $('#placeSuggest').innerHTML = '';
+    return;
+  }
+  placeTimer = setTimeout(() => searchPlaces(q), 300);
+});
+$('#placeForm').onsubmit = (e) => {
+  e.preventDefault();
+  const place = $('#placeSuggest')._places?.[0];
+  if (place) pickPlace(place);
 };
+$('#placeSuggest').onclick = (e) => {
+  const b = e.target.closest('[data-place]');
+  if (!b) return;
+  const place = $('#placeSuggest')._places?.[Number(b.dataset.place)];
+  if (place) pickPlace(place);
+};
+$('#placeDlg').addEventListener('click', (e) => {
+  const d = $('#placeDlg');
+  const r = d.getBoundingClientRect();
+  const outside = e.target === d && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);
+  if ((e.target === d && outside) || e.target.closest('[data-close-place]')) d.close();
+});
 
 $('#statsSeg').onclick = (e) => {
   const b = e.target.closest('button');
