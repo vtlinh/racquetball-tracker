@@ -10,6 +10,7 @@
   --gold: #e6b64a;
   --gold-text: #2a1f00;
   --green: #5cc08a;
+  --orange: #f0923a;
   --radius: 10px;
   color-scheme: dark;
 }
@@ -705,8 +706,13 @@ p.stats.empty {
   font-weight: 700;
 }
 .results .delta {
-  color: var(--muted);
-  font-weight: 500;
+  font-weight: 600;
+}
+.results .delta.up {
+  color: var(--green);
+}
+.results .delta.down {
+  color: var(--orange);
 }
 .legacy {
   margin: 0;
