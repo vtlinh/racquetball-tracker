@@ -191,6 +191,10 @@ main {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.meal-link {
+  color: inherit;
+  text-decoration: none;
+}
 .meal .btn {
   width: 40px;
   height: 36px;
@@ -886,10 +890,18 @@ dialog::backdrop {
   font-weight: 700;
 }
 .meal-label {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  text-align: left;
 }
 .meal-avg {
   flex: none;
@@ -915,15 +927,48 @@ dialog::backdrop {
   align-items: center;
   margin-top: 6px;
 }
-.row input {
+.row input,
+#placeForm input {
   flex: 1;
   min-width: 0;
+  width: 100%;
   height: 36px;
   padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
+}
+.add-meal {
+  width: 100%;
+  height: 40px;
+  margin-top: 8px;
+}
+.place-suggest {
+  margin-top: 8px;
+  max-height: 50vh;
+  overflow: auto;
+}
+.place-suggest button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  padding: 10px 2px;
+  font: inherit;
+}
+.place-suggest .place-name {
+  font-weight: 700;
+}
+.place-suggest .place-addr {
+  color: var(--muted);
+  font-size: 13px;
 }
 details.small {
   margin-top: 10px;

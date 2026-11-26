@@ -30,9 +30,23 @@ export function addDays(date, n) {
 /** Weights a restaurant can have. 5 is picked most often. */
 export const MEAL_WEIGHTS = [1, 2, 3, 4, 5];
 
+function placeFields(raw) {
+  if (!raw || typeof raw !== 'object') return {};
+  const address = String(raw.address || '').trim().replace(/\s+/g, ' ').slice(0, 180);
+  const lat = Number(raw.lat);
+  const lng = Number(raw.lng);
+  const extra = {};
+  if (address) extra.address = address;
+  if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+    extra.lat = Math.round(lat * 1e6) / 1e6;
+    extra.lng = Math.round(lng * 1e6) / 1e6;
+  }
+  return extra;
+}
+
 /** Trimmed restaurant names, first spelling kept, later case-duplicates dropped.
     A plain string weighs 1. Anything outside 1–5 becomes 1. A removed place stays in the
-    list so its weight and scores can come back. */
+    list so its weight and scores can come back. An address is kept when one was picked. */
 export function cleanRestaurants(list) {
   const out = [];
   const seen = new Set();
@@ -42,29 +56,122 @@ export function cleanRestaurants(list) {
     if (!name || seen.has(key)) continue;
     seen.add(key);
     const weight = Math.round(Number(raw?.weight));
-    const entry = { name, weight: MEAL_WEIGHTS.includes(weight) ? weight : 1 };
+    const entry = { name, weight: MEAL_WEIGHTS.includes(weight) ? weight : 1, ...placeFields(raw) };
     if (raw?.removed) entry.removed = true;
     out.push(entry);
   }
   return out;
 }
 
-/** Hide a place without dropping its weight. Scores stored for that name stay put. */
+/** Hide a place without dropping its weight or address. Scores stored for that name stay put. */
 export function withoutRestaurant(list, name) {
   const key = String(name || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
   return cleanRestaurants(list).map((r) => (r.name.toLocaleLowerCase() === key ? { ...r, removed: true } : r));
 }
 
 /** Add a place, or bring back one that was removed, with its previous weight. */
-export function withRestaurant(list, name) {
-  const trimmed = String(name || '').trim().replace(/\s+/g, ' ');
+export function withRestaurant(list, place) {
+  const raw = typeof place === 'string' ? { name: place } : place || {};
+  const trimmed = String(raw.name || '').trim().replace(/\s+/g, ' ');
   const key = trimmed.toLocaleLowerCase();
   const clean = cleanRestaurants(list);
   if (!key) return clean;
   const existing = clean.find((r) => r.name.toLocaleLowerCase() === key);
-  if (!existing) return cleanRestaurants([...clean, { name: trimmed, weight: 1 }]);
+  const picked = placeFields(raw);
+  if (!existing) return cleanRestaurants([...clean, { name: trimmed, weight: 1, ...picked }]);
   if (!existing.removed) return clean;
-  return clean.map((r) => (r === existing ? { name: r.name, weight: r.weight } : r));
+  const next = { name: existing.name, weight: existing.weight, ...placeFields(existing) };
+  if (picked.address) {
+    next.address = picked.address;
+    delete next.lat;
+    delete next.lng;
+    if (picked.lat != null) {
+      next.lat = picked.lat;
+      next.lng = picked.lng;
+    }
+  }
+  return clean.map((r) => (r === existing ? next : r));
+}
+
+/** Replace the address of a place already on the list. The name and score stay. */
+export function updateRestaurantAddress(list, name, place) {
+  const key = String(name || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  const picked = placeFields(place);
+  if (!key || !picked.address) return cleanRestaurants(list);
+  return cleanRestaurants(list).map((r) => {
+    if (r.name.toLocaleLowerCase() !== key) return r;
+    const next = { name: r.name, weight: r.weight, address: picked.address };
+    if (r.removed) next.removed = true;
+    if (picked.lat != null) {
+      next.lat = picked.lat;
+      next.lng = picked.lng;
+    }
+    return next;
+  });
+}
+
+function distanceKm(a, b) {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const lat1 = a.lat * rad;
+  const lat2 = b.lat * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** Street and city from a Photon place, when the search result has them. */
+export function formatPlaceAddress(props = {}) {
+  const street = [props.housenumber, props.street].filter(Boolean).join(' ');
+  const city = props.city || props.town || props.village || props.locality || '';
+  const region = props.state || '';
+  return [street, [city, region].filter(Boolean).join(', ')].filter(Boolean).join(', ');
+}
+
+/** Named places from a Photon response. With a location, the nearest one is first. */
+export function placesFromPhoton(features, here) {
+  const out = [];
+  const seen = new Set();
+  for (const feature of features || []) {
+    const props = feature?.properties || {};
+    const name = String(props.name || '').trim().replace(/\s+/g, ' ');
+    const [lng, lat] = feature?.geometry?.coordinates || [];
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    const key = `${name.toLocaleLowerCase()}|${lat.toFixed(4)}|${lng.toFixed(4)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const place = { name, lat, lng };
+    const address = formatPlaceAddress(props);
+    if (address) place.address = address;
+    if (here) place.km = distanceKm(here, place);
+    out.push(place);
+  }
+  if (here) out.sort((a, b) => a.km - b.km || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  return out;
+}
+
+export function formatMiles(km) {
+  const mi = Number(km) * 0.621371;
+  if (!Number.isFinite(mi)) return '';
+  if (mi < 10) return `${(Math.round(mi * 10) / 10).toFixed(1)} mi`;
+  return `${Math.round(mi)} mi`;
+}
+
+/** A link that opens the maps app at this place. `platform` is ios, android, or web. */
+export function mapsUrl(place, platform) {
+  const fields = placeFields(place);
+  const name = String(place?.name || '').trim();
+  if (!fields.address && fields.lat == null) return '';
+  if (platform === 'ios') {
+    if (fields.lat != null) return `https://maps.apple.com/?ll=${fields.lat},${fields.lng}&q=${encodeURIComponent(name || fields.address)}`;
+    return `https://maps.apple.com/?q=${encodeURIComponent(fields.address)}`;
+  }
+  if (platform === 'android') {
+    if (fields.lat != null) return `geo:${fields.lat},${fields.lng}?q=${fields.lat},${fields.lng}(${encodeURIComponent(name || fields.address)})`;
+    return `geo:0,0?q=${encodeURIComponent(fields.address)}`;
+  }
+  const query = fields.lat != null ? `${fields.lat},${fields.lng}` : fields.address;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 /** A fixed number from the first game day's date. The same day always seeds the same sequence. */

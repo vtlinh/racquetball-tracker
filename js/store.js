@@ -323,7 +323,13 @@ export function setRestaurants(list) {
   const picks = L.cleanMealPicks(state.mealPicks, clean);
   const prev = L.cleanRestaurants(state.restaurants);
   const prevPicks = L.cleanMealPicks(state.mealPicks, prev);
-  const sameRow = (a, b) => a.name === b.name && a.weight === b.weight && !!a.removed === !!b.removed;
+  const sameRow = (a, b) =>
+    a.name === b.name &&
+    a.weight === b.weight &&
+    !!a.removed === !!b.removed &&
+    a.address === b.address &&
+    a.lat === b.lat &&
+    a.lng === b.lng;
   const sameList = clean.length === prev.length && clean.every((r, i) => sameRow(r, prev[i]));
   if (sameList && JSON.stringify(picks) === JSON.stringify(prevPicks)) return;
   commit({ restaurants: clean, mealPicks: picks });

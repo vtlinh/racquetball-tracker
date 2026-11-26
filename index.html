@@ -12,7 +12,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
-    <link rel="stylesheet" href="css/styles.css?v=58" />
+    <link rel="stylesheet" href="css/styles.css?v=59" />
   </head>
   <body>
     <main>
@@ -88,10 +88,18 @@
       <p class="meal-hint">Score 5 is highest and picked most often.</p>
       <div id="mealWho"></div>
       <div id="mealList" class="roster"></div>
-      <form id="mealForm" class="row">
-        <input id="newMeal" placeholder="Add restaurant" autocomplete="off" maxlength="40" />
-        <button class="btn" title="Add" data-icon="plus"></button>
+      <button type="button" class="btn add-meal" id="addMealBtn" title="Add restaurant" data-icon="plus"></button>
+    </dialog>
+
+    <dialog id="placeDlg" class="sheet">
+      <header class="sheet-head">
+        <strong id="placeTitle">Add restaurant</strong>
+        <button class="btn" data-close-place title="Close" data-icon="x"></button>
+      </header>
+      <form id="placeForm">
+        <input id="placeQuery" placeholder="Search restaurants" autocomplete="off" maxlength="80" role="combobox" aria-autocomplete="list" aria-controls="placeSuggest" />
       </form>
+      <div id="placeSuggest" class="place-suggest"></div>
     </dialog>
 
     <script>
@@ -100,6 +108,6 @@
         navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
       }
     </script>
-    <script type="module" src="js/app.js?v=58"></script>
+    <script type="module" src="js/app.js?v=59"></script>
   </body>
 </html>
