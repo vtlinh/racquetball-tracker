@@ -27,6 +27,7 @@
         </div>
         <nav class="actions" aria-label="Actions">
           <button class="btn" id="undoBtn" title="Undo last result change" data-icon="undo"></button>
+          <button class="btn" id="redoBtn" title="Redo" data-icon="redo" hidden></button>
           <button class="btn" id="shuffleBtn" title="Reshuffle teams" data-icon="shuffle"></button>
         </nav>
       </header>
@@ -36,7 +37,7 @@
       <div id="outRow" class="out-row"></div>
 
       <section class="players" aria-label="Today">
-        <div class="players-head"><span></span><span>Played</span><span>Won</span><span>Sat</span><span></span><span></span></div>
+        <div class="players-head"><span></span><span>Played</span><span>Won</span><span></span><span></span></div>
         <div id="players"></div>
       </section>
 
@@ -51,7 +52,6 @@
             <span id="periodLabel"></span>
             <button class="btn" id="nextPeriod" title="Next" data-icon="right"></button>
           </div>
-          <button class="btn" id="clearPeriod" title="Delete all results in this period" data-icon="trash"></button>
         </div>
         <div id="statsBody"></div>
         <p class="note" id="statsNote"></p>

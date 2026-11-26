@@ -20,23 +20,24 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 
 - Every result is saved under its date as soon as you tap **Win**. There's no end-of-day step: each day's rows in the sheet are rewritten automatically whenever that day changes.
 - The day picker at the top (‹ Today ›) chooses which day new results go to. Today is the Eastern Time date, so an evening game stays on that day. Tap the date to jump to any past day, or use the pencil on a day in the results list. A past day is shown in gold.
-- Below the Month/Year stats, results are grouped by day, newest day first and newest result first. Each result shows the time it was recorded, in Eastern Time. Each day shows every player's wins-losses. Use ⇄ to change a result's winner and × to delete it.
+- Below the Month/Year stats, results are grouped by day, newest day first and newest result first. Each result shows the time it was recorded, in Eastern Time, as `HH:MM`. Each day shows every player's wins-losses. Use ⇄ to change a result's winner and × to delete it.
 - 👑 goes to the day's most wins (a tie goes to whoever lost fewer); 💩 goes to the most losses (a tie goes to whoever won fewer). If it's still tied, nobody gets it.
 
 ## Buttons
 
 | Icon | Action |
 | --- | --- |
-| Win (on each team) | That team or player won, recorded on the day shown at the top, with the real time of the tap (shown in Eastern Time). The next lineup is picked automatically. |
+| Win (on each team) | That team or player won, recorded on the day shown at the top, with the real time of the tap (`HH:MM` Eastern Time). The next lineup is picked automatically. |
 | Undo | Reverts the last change to results: a win, a changed winner or a deleted result. Check-ins, sit-outs, swaps and shuffles aren't undone. |
+| Redo | Puts back the last undone result change. It appears only after an undo, and a new result clears it. |
 | Shuffle | Re-split the teams. |
 | ‹ date › | Pick the day results are recorded on. |
 | Coffee cup (player row) | Sit that player out (or bring them back). |
 | Circle-check (player row) | Check the player in or out. |
-| Month / Year, arrows | Stats for a month or year, with that period's results by day. Trash deletes every result in the shown period. |
+| Month / Year, arrows | Stats for a month or year, with that period's results by day. |
 | "Saved in this browser." | Tap it for settings: roster and the Google Sheet connection. |
 
-The player rows show played, won and sat for the day shown at the top.
+The player rows show played and won for the day shown at the top.
 
 ## Google Sheet storage
 
@@ -46,7 +47,7 @@ The sheet has these tabs (set up already):
 - `Matches`: every match, keyed by date. The Time column is Eastern Time (24-hour).
 - `Monthly` and `Yearly`: per-player summaries built with `QUERY` formulas over `Days`.
 - `Players`: the roster.
-- `State`: all results by day, the live lineup and the undo history (managed by the app). This is how several phones share the same session.
+- `State`: all results by day, the live lineup, and the undo and redo history (managed by the app). This is how several phones share the same session.
 
 Google doesn't allow anonymous writes to a sheet through its API, even when the sheet is world-editable. So the app talks to a small Apps Script web app bound to the sheet ([`apps-script/Code.gs`](apps-script/Code.gs)). It's a one-time setup:
 

@@ -19,7 +19,8 @@ let sync = { status: cfg.apiUrl ? 'idle' : 'local', error: '' };
 /**
  * state.log    { 'YYYY-MM-DD': [{ sides, out, win, t }] } — every result, by day
  * state.live   { present, match } — who is here and the lineup on court
- * state.undo   [{ date, history, match }] — match changes only
+ * state.undo   [{ date, history, match }] — result changes only
+ * state.redo   same shape — results put back after an undo, cleared by a new result
  * state.legacy stamped Days rows that have no match log (v1 data, other devices' unsynced days)
  */
 function blank() {
@@ -28,6 +29,7 @@ function blank() {
     live: blankLive(),
     log: {},
     undo: [],
+    redo: [],
     legacy: [],
     updatedAt: 0,
     pending: [],
@@ -127,13 +129,23 @@ function withDay(log, date, history) {
   return next;
 }
 
+const snapshot = (date) => ({ date, history: dayHistory(date), match: state.live.match });
+
+function restoredLive(entry) {
+  if (!entry.match) return state.live;
+  return {
+    present: [...new Set([...state.live.present, ...L.onCourt(entry.match), ...entry.match.out])],
+    match: entry.match,
+  };
+}
+
 /** Change one day's results; undoable. `match` replaces the lineup when given. */
 function setDay(date, history, match) {
-  const entry = { date, history: dayHistory(date), match: state.live.match };
   commit({
     log: withDay(state.log, date, history),
     pending: stampOps(state.pending, date, history),
-    undo: [...state.undo, entry].slice(-UNDO_LIMIT),
+    undo: [...state.undo, snapshot(date)].slice(-UNDO_LIMIT),
+    redo: [],
     ...(match !== undefined && { live: { ...state.live, match } }),
   });
 }
@@ -173,22 +185,28 @@ export function deleteMatch(date, idx) {
 }
 
 export const canUndo = () => state.undo.length > 0;
+export const canRedo = () => state.redo.length > 0;
+
+function travel(entry, undo, redo) {
+  commit({
+    undo,
+    redo,
+    log: withDay(state.log, entry.date, entry.history),
+    pending: stampOps(state.pending, entry.date, entry.history),
+    live: restoredLive(entry),
+  });
+}
 
 export function undo() {
   const e = state.undo.at(-1);
   if (!e) return;
-  const live = e.match
-    ? {
-        present: [...new Set([...state.live.present, ...L.onCourt(e.match), ...e.match.out])],
-        match: e.match,
-      }
-    : state.live;
-  commit({
-    undo: state.undo.slice(0, -1),
-    log: withDay(state.log, e.date, e.history),
-    pending: stampOps(state.pending, e.date, e.history),
-    live,
-  });
+  travel(e, state.undo.slice(0, -1), [...state.redo, snapshot(e.date)].slice(-UNDO_LIMIT));
+}
+
+export function redo() {
+  const e = state.redo.at(-1);
+  if (!e) return;
+  travel(e, [...state.undo, snapshot(e.date)].slice(-UNDO_LIMIT), state.redo.slice(0, -1));
 }
 
 /** Delete whole days (local log and the sheet). Not undoable. */
@@ -204,7 +222,13 @@ export function deleteDays(dates) {
   for (const id of new Set(state.legacy.filter((r) => drop.has(r.date)).map((r) => r.session))) {
     if (!drop.has(id)) pending = [...pending, { action: 'unstamp', session: id }];
   }
-  commit({ log, pending, legacy, undo: state.undo.filter((e) => !drop.has(e.date)) });
+  commit({
+    log,
+    pending,
+    legacy,
+    undo: state.undo.filter((e) => !drop.has(e.date)),
+    redo: state.redo.filter((e) => !drop.has(e.date)),
+  });
 }
 
 // ---- lineup (not undoable) -------------------------------------------------
@@ -321,8 +345,9 @@ function adoptRemote(remote) {
       next.log = data.log;
       next.live = data.live || blankLive();
       next.undo = data.undo || [];
+      next.redo = data.redo || [];
     } else if (data.session) {
-      Object.assign(next, fromV1(data.session), { undo: [] });
+      Object.assign(next, fromV1(data.session), { undo: [], redo: [] });
     }
     next.updatedAt = rs.updatedAt;
   }
@@ -377,7 +402,7 @@ async function drain() {
       const res = await call({
         action: 'saveState',
         updatedAt: state.updatedAt,
-        state: { log: state.log, live: state.live, undo: state.undo },
+        state: { log: state.log, live: state.live, undo: state.undo, redo: state.redo },
       });
       if (res.stale && res.state) adoptRemote(res);
     }

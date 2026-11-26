@@ -58,15 +58,26 @@ test('results are written per day automatically; undo only reverts result change
   const remote = backend.get().state.data;
   assert.equal(remote.log[today()].length, 3);
   assert.equal(remote.undo.length, 3, 'only results are on the undo stack');
+  assert.equal(remote.redo.length, 0, 'a new result clears redo');
 
   const lineup = S.getState().live.match;
+  const third = S.dayHistory().at(-1);
   S.togglePlayer('Doug');
+  const afterToggle = S.getState().live.match;
   S.undo();
   assert.equal(S.dayHistory().length, 2, 'undo reverts the last result');
+  assert.equal(S.canRedo(), true, 'undo can be redone');
   assert.ok(S.getState().live.present.includes('Doug'), 'players in the restored lineup are back');
   assert.notEqual(S.getState().live.match, lineup);
+  S.redo();
+  assert.equal(S.dayHistory().at(-1), third, 'redo puts the result back');
+  assert.equal(S.canRedo(), false);
+  assert.equal(S.getState().live.match, afterToggle, 'redo restores the court from before the undo');
+  S.undo();
+  assert.equal(S.dayHistory().length, 2);
   await settle();
   assert.equal(matchRows(today()).length, 2);
+  assert.equal(backend.get().state.data.redo.length, 1);
 
   const first = S.dayHistory()[0];
   S.setWinner(today(), 0, 1 - first.win);
