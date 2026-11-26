@@ -1,0 +1,73 @@
+# Squash-merge a same-repo pull request once its test workflow is green.
+# The merge uses GITHUB_TOKEN, and a push made with that token does not start
+# the publish workflow, so this job starts that workflow on main afterward.
+
+name: Merge green pull requests
+
+on:
+  workflow_run:
+    workflows: ["Test and publish to GitHub Pages"]
+    types: [completed]
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Squash merge when every check is green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          HEAD: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          pr=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/pulls" --jq '.[0].number')
+          if [ -z "${pr}" ] || [ "${pr}" = "null" ]; then
+            echo "No pull request is attached to this run."
+            exit 0
+          fi
+          state=$(gh pr view "$pr" --repo "$REPO" --json state --jq .state)
+          draft=$(gh pr view "$pr" --repo "$REPO" --json isDraft --jq .isDraft)
+          base=$(gh pr view "$pr" --repo "$REPO" --json baseRefName --jq .baseRefName)
+          head=$(gh pr view "$pr" --repo "$REPO" --json headRefOid --jq .headRefOid)
+          if [ "$state" != "OPEN" ] || [ "$draft" = "true" ] || [ "$base" != "main" ] || [ "$head" != "$HEAD" ]; then
+            echo "Pull request #${pr} is not an open change to main at ${HEAD}."
+            exit 0
+          fi
+          ready=0
+          for _ in 1 2 3 4 5 6; do
+            counts=$(gh api "repos/${REPO}/commits/${HEAD}/check-runs?per_page=100" --jq '
+              [
+                ([.check_runs[] | select(.status != "completed")] | length),
+                ([.check_runs[] | select(.status == "completed" and (.conclusion != "success" and .conclusion != "skipped" and .conclusion != "neutral"))] | length),
+                ([.check_runs[] | select(.conclusion == "success")] | length)
+              ] | @tsv
+            ')
+            pending=$(printf '%s' "$counts" | cut -f1)
+            failed=$(printf '%s' "$counts" | cut -f2)
+            passed=$(printf '%s' "$counts" | cut -f3)
+            if [ "$failed" != "0" ]; then
+              echo "A check on ${HEAD} failed."
+              exit 1
+            fi
+            if [ "$pending" = "0" ] && [ "$passed" != "0" ]; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          if [ "$ready" != "1" ]; then
+            echo "Checks on ${HEAD} are not green yet."
+            exit 0
+          fi
+          gh pr merge "$pr" --repo "$REPO" --squash
+          gh workflow run "Test and publish to GitHub Pages" --repo "$REPO" --ref main
