@@ -2,10 +2,18 @@ import * as L from './logic.js';
 import { DEFAULT_API_URL } from './config.js';
 
 const STATE_KEY = 'rb.state.v1';
-const CFG_KEY = 'rb.cfg.v1';
 const UNDO_LIMIT = 100;
 
 const blankLive = () => ({ present: [], match: null });
+
+/** The built-in sheet. Tests point `?api=` at a stand-in before this module loads. */
+function sheetUrl() {
+  try {
+    const fromUrl = new URLSearchParams(globalThis.location?.search || '').get('api');
+    if (fromUrl && fromUrl.trim()) return fromUrl.trim();
+  } catch {}
+  return DEFAULT_API_URL;
+}
 
 const listeners = new Set();
 let flushing = null;
@@ -13,8 +21,8 @@ let inflight = null;
 let flushTimer = 0;
 let viewDate = null;
 let state = loadLocal();
-let cfg = loadCfg();
-let sync = { status: cfg.apiUrl ? 'idle' : 'local', error: '' };
+const API_URL = sheetUrl();
+let sync = { status: API_URL ? 'idle' : 'local', error: '' };
 
 /**
  * state.log    { 'YYYY-MM-DD': [{ sides, out, win, t }] } — every result, by day
@@ -63,28 +71,13 @@ function loadLocal() {
   return blank();
 }
 
-function loadCfg() {
-  let c = {};
-  try {
-    c = JSON.parse(localStorage.getItem(CFG_KEY)) || {};
-  } catch {}
-  const fromUrl = new URLSearchParams(location.search).get('api');
-  if (fromUrl) {
-    c.apiUrl = fromUrl.trim();
-    localStorage.setItem(CFG_KEY, JSON.stringify(c));
-    history.replaceState(null, '', location.pathname);
-  }
-  if (!c.apiUrl && DEFAULT_API_URL) c.apiUrl = DEFAULT_API_URL;
-  return c;
-}
-
 const persist = () => localStorage.setItem(STATE_KEY, JSON.stringify(state));
 const emit = () => listeners.forEach((fn) => fn());
 
 export const subscribe = (fn) => (listeners.add(fn), () => listeners.delete(fn));
 export const getState = () => state;
 export const getSync = () => sync;
-export const getApiUrl = () => cfg.apiUrl || '';
+export const getApiUrl = () => API_URL;
 
 function setSync(patch) {
   sync = { ...sync, ...patch };
@@ -298,20 +291,10 @@ export function setRoster(roster) {
   );
 }
 
-export function setApiUrl(url) {
-  cfg = { ...cfg, apiUrl: url.trim() };
-  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-  setSync({ status: cfg.apiUrl ? 'idle' : 'local', error: '' });
-  if (cfg.apiUrl) {
-    state = { ...state, dirty: true };
-    pull();
-  }
-}
-
 // ---- Google Sheet sync (Apps Script web app) -----------------------------
 
 async function call(body) {
-  const url = cfg.apiUrl;
+  const url = API_URL;
   const res = body
     ? await fetch(url, {
         method: 'POST',
@@ -357,7 +340,7 @@ function adoptRemote(remote) {
 }
 
 export async function pull() {
-  if (!cfg.apiUrl) return;
+  if (!API_URL) return;
   try {
     setSync({ status: 'syncing' });
     adoptRemote(await call());
@@ -369,13 +352,13 @@ export async function pull() {
 }
 
 function scheduleFlush(delay = 400) {
-  if (!cfg.apiUrl) return;
+  if (!API_URL) return;
   clearTimeout(flushTimer);
   flushTimer = setTimeout(flush, delay);
 }
 
 export function flush() {
-  if (!cfg.apiUrl) return Promise.resolve();
+  if (!API_URL) return Promise.resolve();
   if (!flushing) {
     flushing = drain().finally(() => {
       flushing = null;

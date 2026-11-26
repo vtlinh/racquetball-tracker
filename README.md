@@ -35,7 +35,7 @@ An installable web app (PWA) that picks fair, random lineups for 2v2 racquetball
 | Player name                 | Include that player in the lineup, or leave them out.                                                                                                         |
 | Coffee cup (beside a name)  | Sit that player out, or bring them back. Several players can sit at once.                                                                                     |
 | All / Year / Month, arrows  | Stats for all time, a year, or a month, with that period's results by day. All time has no arrows.                                                            |
-| Settings                    | Roster and the Google Sheet connection.                                                                                                                       |
+| Settings                    | Roster.                                                                                                                                                       |
 
 Played and won for the day are in the results at the bottom.
 
@@ -49,14 +49,9 @@ The sheet has these tabs (set up already):
 - `Players`: the roster.
 - `State`: all results by day, the live lineup, and the undo and redo history (managed by the app). This is how several phones share the same session.
 
-Google doesn't allow anonymous writes to a sheet through its API, even when the sheet is world-editable. So the app talks to a small Apps Script web app bound to the sheet ([`apps-script/Code.gs`](apps-script/Code.gs)). It's a one-time setup:
+Google doesn't allow anonymous writes to a sheet through its API, even when the sheet is world-editable. The app talks to an Apps Script web app bound to the sheet ([`apps-script/Code.gs`](apps-script/Code.gs)). Its URL is fixed in [`js/config.js`](js/config.js).
 
-1. Open the sheet and go to **Extensions → Apps Script**.
-2. Replace `Code.gs` with [`apps-script/Code.gs`](apps-script/Code.gs) (the app's settings have a copy button), then save.
-3. Go to **Deploy → New deployment → Web app**. Set _Execute as_ to **Me** and _Who has access_ to **Anyone**, then deploy and authorize.
-4. Copy the `/exec` URL into the app's settings. To configure another phone, open `https://vtlinh.github.io/racquetball-tracker/?api=<exec-url>` once. You can also put the URL in `DEFAULT_API_URL` in [`js/config.js`](js/config.js) so every device picks it up.
-
-Until the sheet is connected, everything is kept on the device. The device also caches the last state, so the app works offline. Changes made offline are sent to the sheet when the connection returns.
+The device caches the last state, so the app works offline. Changes made offline are sent to the sheet when the connection returns.
 
 ## Development
 
@@ -67,7 +62,6 @@ npm test         # lineup rules + sheet sync (runs apps-script/Code.gs against a
 npm run serve    # http://localhost:8080
 npm run icons    # regenerate PNG icons
 node tests/mock-api-server.mjs   # local stand-in for the Apps Script API on :8081
-                                 # then open http://localhost:8080/?api=http://localhost:8081/exec
 ```
 
 Pushing to `main` runs the tests and publishes the site to the `gh-pages` branch (GitHub Pages).
