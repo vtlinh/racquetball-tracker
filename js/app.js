@@ -614,6 +614,17 @@ function rallyBall() {
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
   };
+  // Hold the full squash long enough to see, then spring back to round.
+  // The ease-out keeps the deep flatten on the bounce instead of carrying it across the court.
+  const squashAmount = (age) => {
+    const hold = 0.06;
+    const recover = 0.1;
+    if (age <= hold) return 1;
+    const t = (age - hold) / recover;
+    if (t >= 1) return 0;
+    const u = 1 - t;
+    return u * u * u;
+  };
   const textPad = (el) => {
     if (el._textPad) return el._textPad;
     const style = getComputedStyle(el);
@@ -693,7 +704,7 @@ function rallyBall() {
         y: maxY * 0.35,
         vx: triples ? laneW * 0.9 : floor.clientWidth * 0.72,
         vy: floor.clientHeight * 1.25,
-        squash: 0,
+        squashedAt: 0,
         wall: 'right',
         sides,
       };
@@ -709,33 +720,40 @@ function rallyBall() {
       if (state.x <= minX) {
         state.x = minX + (minX - state.x);
         state.vx = Math.abs(state.vx);
-        state.squash = 1;
+        state.squashedAt = now;
         state.wall = 'left';
       } else if (state.x >= maxX) {
         state.x = maxX - (state.x - maxX);
         state.vx = -Math.abs(state.vx);
-        state.squash = 1;
+        state.squashedAt = now;
         state.wall = 'right';
       }
       if (state.y <= 0) {
         state.y = -state.y;
         state.vy = Math.abs(state.vy);
-        state.squash = 1;
+        state.squashedAt = now;
         state.wall = 'top';
       } else if (state.y >= maxY) {
         state.y = maxY - (state.y - maxY);
         state.vy = -Math.abs(state.vy);
-        state.squash = 1;
+        state.squashedAt = now;
         state.wall = 'bottom';
       }
       state.x = Math.min(maxX, Math.max(minX, state.x));
       state.y = Math.min(maxY, Math.max(0, state.y));
     }
-    state.squash *= Math.exp(-dt * 18);
-    const k = state.squash;
-    const flat = 1 - 0.38 * k;
-    const bulge = 1 + 0.16 * k;
+    const k = squashAmount(state.squashedAt ? (now - state.squashedAt) / 1000 : 10);
+    // Thin against the wall and wide along it, so the outline changes shape.
+    const flat = 1 - 0.46 * k;
+    const bulge = 1 + 0.58 * k;
     const sideways = state.wall === 'left' || state.wall === 'right';
+    // Plant the squish on the wall, then spring back onto the rally path as the ball rounds out.
+    let x = state.x;
+    let y = state.y;
+    if (state.wall === 'left') x = minX + (state.x - minX) * (1 - k);
+    else if (state.wall === 'right') x = maxX + (state.x - maxX) * (1 - k);
+    else if (state.wall === 'top') y = state.y * (1 - k);
+    else y = maxY + (state.y - maxY) * (1 - k);
     ball.style.transformOrigin =
       state.wall === 'left'
         ? '0% 50%'
@@ -745,8 +763,8 @@ function rallyBall() {
             ? '50% 0%'
             : '50% 100%';
     ball.style.transform = `scale(${(sideways ? flat : bulge).toFixed(3)}, ${(sideways ? bulge : flat).toFixed(3)})`;
-    place(ball, state.x, state.y);
-    samples.push({ x: state.x, y: state.y });
+    place(ball, x, y);
+    samples.push({ x, y });
     if (samples.length > 20) samples.shift();
     trails.forEach((t, i) => {
       const s = samples[samples.length - 1 - trailLag[i]];
