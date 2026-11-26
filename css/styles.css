@@ -279,15 +279,17 @@ main {
   flex-direction: row-reverse;
 }
 .teams[data-sides='3'] {
+  /* The dotted line is the right edge of the left section. Center the stack there. */
+  left: 18.75%;
   right: auto;
   width: max-content;
-  max-width: 46%;
+  max-width: calc(37.5% - 8px);
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
   gap: 2px;
-  padding-left: 4px;
 }
 .team {
   min-width: 0;
@@ -350,6 +352,7 @@ main {
   flex-direction: row-reverse;
   justify-content: flex-start;
   gap: 4px;
+  max-width: 100%;
 }
 .teams[data-sides='3'] .win {
   width: 30px;
