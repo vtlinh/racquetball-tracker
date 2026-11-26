@@ -654,6 +654,10 @@ p.stats.empty {
 .standings span {
   white-space: nowrap;
 }
+.standings .pts {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
 .day summary::-webkit-details-marker {
   display: none;
 }

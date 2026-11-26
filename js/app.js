@@ -280,16 +280,25 @@ function resultLine(m) {
   return `<span class="res-line">${winners}</span><span class="res-line">${beaten}</span>`;
 }
 
+/** Where a score sits from the day's lowest (0, orange) to its highest (1, green). */
+function scoreTone(score, low, high) {
+  if (!(high > low)) return 0.5;
+  return (score - low) / (high - low);
+}
+
 function dayGroup(day) {
   const { date, history } = day;
   const viewing = date === S.getViewDate();
   const open = dayOpen.has(date) ? dayOpen.get(date) : date === L.localDate();
   const totals = L.aggregate(day.rows).sort((a, b) => b.score - a.score || byName(a.player, b.player));
   const stars = L.starsOf(totals);
+  const low = Math.min(...totals.map((r) => r.score));
+  const high = Math.max(...totals.map((r) => r.score));
   const standings = totals
     .map((r) => {
       const emoji = dayMark(r.player, stars, r.played);
-      return `<span><b>${esc(r.player)}</b>${emoji ? ` ${emoji}` : ''} ${L.formatScore(r.score)}</span>`;
+      const tone = Math.round(scoreTone(r.score, low, high) * 100);
+      return `<span><b>${esc(r.player)}</b>${emoji ? ` ${emoji}` : ''} <span class="pts" style="color: color-mix(in srgb, var(--orange), var(--green) ${tone}%)">${L.formatScore(r.score)}</span></span>`;
     })
     .join('');
   const body = history
